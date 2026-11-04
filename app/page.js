@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { BRAND, DENTAL_CASES, FORMAT_OPTIONS } from '../lib/brand';
 
 export default function Home() {
@@ -13,17 +13,24 @@ export default function Home() {
   const [topCaptionIndex, setTopCaptionIndex] = useState(0);
   const [postCaptionIndex, setPostCaptionIndex] = useState(0);
 
-  // Campos Totalmente Editáveis
+  // Campos Totalmente Editáveis (Incluindo os apontados pelas setas)
   const currentCaseObj = DENTAL_CASES.find(c => c.id === selectedCase) || DENTAL_CASES[0];
   const [customCategory, setCustomCategory] = useState(currentCaseObj.categoryTitle);
   const [customTopCaption, setCustomTopCaption] = useState(currentCaseObj.topCaptions[0]);
+  const [customValuesLine, setCustomValuesLine] = useState("Naturalidade · Harmonia · Qualidade"); // Seta inferior
   const [customPostCaption, setCustomPostCaption] = useState(currentCaseObj.postCaptions[0]);
   const [customCta, setCustomCta] = useState("Agende sua avaliação");
 
-  // Contexto para a IA especializada
+  // Contexto para a IA
   const [patientContext, setPatientContext] = useState('');
   const [procedureHighlights, setProcedureHighlights] = useState('');
 
+  // Estados de Renderização e Download
+  const [isRendering, setIsRendering] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [renderedImageUrl, setRenderedImageUrl] = useState(null);
+  
+  const canvasRef = useRef(null);
   const currentFormatObj = FORMAT_OPTIONS.find(f => f.id === selectedFormat) || FORMAT_OPTIONS[2];
 
   const handleCaseChange = (e) => {
@@ -76,22 +83,187 @@ export default function Home() {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // IA Especializada Odontológica
   const handleAIGenerateText = () => {
     const refinedTop = patientContext.trim() 
       ? `Transformação estética focada em ${patientContext.trim()}.` 
       : `Excelência e precisão em ${currentCaseObj.label.toLowerCase()}.`;
 
     const refinedPost = procedureHighlights.trim() 
-      ? `${procedureHighlights.trim()}. Devolva a harmonia e a jovialidade ao seu sorriso com segurança e planejamento digital.` 
-      : `Planejamento reabilitador personalizado para garantir naturalidade, função e estética impecável.`;
+      ? `${procedureHighlights.trim()}. Devolva a harmonia e a jovialidade ao seu sorriso.` 
+      : `Planejamento reabilitador personalizado para garantir naturalidade e estética impecável.`;
 
     setCustomTopCaption(refinedTop);
     setCustomPostCaption(refinedPost);
   };
 
+  // Motor Canvas UHD para Download Direto e Perfeito
+  const handleGenerateAndOpenDownload = () => {
+    setIsRendering(true);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    const w = currentFormatObj.width;
+    const h = currentFormatObj.height;
+    canvas.width = w;
+    canvas.height = h;
+
+    // 1. Fundo Deep Navy
+    ctx.fillStyle = '#040a17';
+    ctx.fillRect(0, 0, w, h);
+
+    // 2. Moldura Dourada Externa
+    ctx.strokeStyle = '#c8a86b';
+    ctx.lineWidth = Math.max(8, Math.round(w * 0.007));
+    ctx.strokeRect(30, 30, w - 60, h - 60);
+
+    // Configurações de escala baseadas na largura
+    const centerX = w / 2;
+
+    // 3. Cabeçalho (Nome + Categoria + Título)
+    ctx.fillStyle = '#f3ece0';
+    ctx.font = `600 ${Math.round(w * 0.032)}px Jost, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`Dr. ${BRAND.name}`, centerX, 110);
+
+    // Categoria apontada pela seta superior
+    ctx.fillStyle = '#c8a86b';
+    ctx.font = `500 ${Math.round(w * 0.024)}px Jost, sans-serif`;
+    ctx.letterSpacing = '3px';
+    ctx.fillText(customCategory.toUpperCase(), centerX, 155);
+
+    // Linha divisória
+    ctx.strokeStyle = '#9c7f46';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(centerX - 60, 185);
+    ctx.lineTo(centerX + 60, 185);
+    ctx.stroke();
+
+    // Título Principal
+    ctx.fillStyle = '#f3ece0';
+    ctx.font = `500 ${Math.round(w * 0.046)}px "Cormorant Garamond", serif`;
+    ctx.fillText(`“${customTopCaption}”`, centerX, 245);
+
+    // 4. Caixa Central de Imagens
+    const boxX = 60;
+    const boxY = 290;
+    const boxW = w - 120;
+    const boxH = Math.round(h * 0.48);
+
+    ctx.fillStyle = '#071328';
+    ctx.strokeStyle = '#c8a86b';
+    ctx.lineWidth = 3;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    const finishRendering = () => {
+      // 5. Rodapé (Valores, Legenda, CTA, Credenciais)
+      const footerY = boxY + boxH + 40;
+
+      // Valores apontados pela seta inferior
+      ctx.fillStyle = '#e6cf9d';
+      ctx.font = `400 ${Math.round(w * 0.026)}px Jost, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(customValuesLine, centerX, footerY);
+
+      // Legenda Descritiva
+      ctx.fillStyle = '#f3ece0';
+      ctx.font = `300 ${Math.round(w * 0.027)}px Jost, sans-serif`;
+      ctx.fillText(customPostCaption, centerX, footerY + 50, boxW);
+
+      // Botão CTA Dourado
+      const btnW = Math.round(w * 0.55);
+      const btnH = 65;
+      const btnX = (w - btnW) / 2;
+      const btnY = footerY + 90;
+
+      ctx.fillStyle = '#c8a86b';
+      ctx.beginPath();
+      ctx.roundRect(btnX, btnY, btnW, btnH, 32);
+      ctx.fill();
+
+      ctx.fillStyle = '#040a17';
+      ctx.font = `600 ${Math.round(w * 0.03)}px Jost, sans-serif`;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(customCta, centerX, btnY + btnH / 2);
+      ctx.textBaseline = 'alphabetic';
+
+      // CRO Rodapé
+      ctx.fillStyle = '#c8a86b';
+      ctx.font = `400 ${Math.round(w * 0.022)}px Jost, sans-serif`;
+      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 45);
+
+      // Gerar URL da Imagem Pronta
+      const dataUrl = canvas.toDataURL('image/png');
+      setRenderedImageUrl(dataUrl);
+      setIsRendering(false);
+      setPreviewModalOpen(true);
+    };
+
+    if (selectedImages.length > 0) {
+      if (useBeforeAfter && selectedImages.length >= 2) {
+        const halfH = boxH / 2;
+        let img1 = new Image();
+        img1.crossOrigin = 'anonymous';
+        img1.src = selectedImages[0].url;
+        img1.onload = () => {
+          ctx.drawImage(img1, boxX, boxY, boxW, halfH);
+          // Selo Antes
+          ctx.fillStyle = '#040a17';
+          ctx.strokeStyle = '#c8a86b';
+          ctx.lineWidth = 2;
+          ctx.fillRect(boxX + 15, boxY + 15, 90, 34);
+          ctx.strokeRect(boxX + 15, boxY + 15, 90, 34);
+          ctx.fillStyle = '#e6cf9d';
+          ctx.font = `600 ${Math.round(w * 0.018)}px Jost, sans-serif`;
+          ctx.fillText('ANTES', boxX + 60, boxY + 36);
+
+          let img2 = new Image();
+          img2.crossOrigin = 'anonymous';
+          img2.src = selectedImages[1].url;
+          img2.onload = () => {
+            ctx.drawImage(img2, boxX, boxY + halfH, boxW, halfH);
+            // Selo Depois
+            ctx.fillStyle = '#040a17';
+            ctx.strokeStyle = '#c8a86b';
+            ctx.lineWidth = 2;
+            ctx.fillRect(boxX + 15, boxY + halfH + 15, 90, 34);
+            ctx.strokeRect(boxX + 15, boxY + halfH + 15, 90, 34);
+            ctx.fillStyle = '#e6cf9d';
+            ctx.fillText('DEPOIS', boxX + 60, boxY + halfH + 36);
+
+            finishRendering();
+          };
+          img2.onerror = finishRendering;
+        };
+        img1.onerror = finishRendering;
+      } else {
+        let img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = selectedImages[0].url;
+        img.onload = () => {
+          ctx.drawImage(img, boxX, boxY, boxW, boxH);
+          finishRendering();
+        };
+        img.onerror = finishRendering;
+      }
+    } else {
+      finishRendering();
+    }
+  };
+
+  const handleDownload = () => {
+    if (!renderedImageUrl) return;
+    const link = document.createElement('a');
+    link.download = `post-${selectedCase}-${selectedFormat}-UHD.png`;
+    link.href = renderedImageUrl;
+    link.click();
+  };
+
   return (
     <div className="wrap">
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
       <header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <img src="/logo-gold.png" alt="Logo" style={{ height: '36px' }} />
@@ -141,7 +313,7 @@ export default function Home() {
                 type="text" 
                 value={patientContext} 
                 onChange={(e) => setPatientContext(e.target.value)}
-                placeholder="Ex: reabilitação estética, dentes desalinhados..." 
+                placeholder="Ex: reabilitação estética, dentes alinhados..." 
               />
             </label>
 
@@ -165,9 +337,9 @@ export default function Home() {
             </button>
           </div>
 
-          {/* CATEGORIA EDITÁVEL */}
+          {/* CATEGORIA EDITÁVEL (Apontada pela Seta Superior) */}
           <label>
-            Subtítulo / Categoria (Ex: LENTES DE CONTATO)
+            Subtítulo / Categoria (Seta Superior)
             <input 
               type="text" 
               value={customCategory}
@@ -190,6 +362,17 @@ export default function Home() {
               onChange={(e) => setCustomTopCaption(e.target.value)}
             />
           </div>
+
+          {/* LINHA DE VALORES EDITÁVEL (Apontada pela Seta Inferior) */}
+          <label>
+            Valores / Qualidades (Seta Inferior)
+            <input 
+              type="text" 
+              value={customValuesLine}
+              onChange={(e) => setCustomValuesLine(e.target.value)}
+              placeholder="Ex: Naturalidade · Harmonia · Qualidade"
+            />
+          </label>
 
           {/* LEGENDA EDITÁVEL + NAVEGAÇÃO */}
           <div>
@@ -225,7 +408,7 @@ export default function Home() {
               style={{ width: '15px', height: '15px', accentColor: 'var(--gold)' }}
             />
             <label htmlFor="beforeAfterCheck" style={{ cursor: 'pointer', margin: 0 }}>
-              Ativar modo "Antes e Depois" (Padrão simétrico em 2 fotos)
+              Ativar modo "Antes e Depois" (Tamanhos simétricos perfeitos em 2 fotos)
             </label>
           </div>
 
@@ -264,9 +447,14 @@ export default function Home() {
             </div>
           )}
 
+          {/* BOTÃO DE GERAR E BAIXAR */}
+          <button className="btn" onClick={handleGenerateAndOpenDownload} disabled={isRendering}>
+            {isRendering ? 'Processando Imagem UHD...' : '⚡ Gerar & Baixar Imagem UHD'}
+          </button>
+
         </div>
 
-        {/* PREVIEW EM TEMPO REAL COM TAMANHO PADRÃO SIMÉTRICO */}
+        {/* PREVIEW EM TEMPO REAL */}
         <div className="stage">
           <div className="preview-card" style={{ width: '100%', maxWidth: '440px' }}>
             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -278,7 +466,6 @@ export default function Home() {
               </span>
             </div>
 
-            {/* ARTE FINAL COM TAMANHOS DE FOTO PADRONIZADOS */}
             <div 
               style={{ 
                 width: '100%',
@@ -296,7 +483,7 @@ export default function Home() {
               }}
             >
               
-              {/* TOPO: LOGO + NOME + CATEGORIA + TÍTULO */}
+              {/* TOPO: LOGO + NOME + CATEGORIA (Editável) + TÍTULO */}
               <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <img src="/logo-gold.png" alt="Logo" style={{ height: '24px', width: 'auto' }} />
@@ -314,7 +501,7 @@ export default function Home() {
                 </h2>
               </div>
 
-              {/* MOLDURA CENTRAL COM TAMANHOS DE FOTO IGUAIS E SIMÉTRICOS */}
+              {/* MOLDURA CENTRAL COM TAMANHOS DE FOTO IDÊNTICOS E SIMÉTRICOS */}
               <div 
                 style={{ 
                   width: '100%', 
@@ -332,32 +519,18 @@ export default function Home() {
                 {selectedImages.length > 0 ? (
                   useBeforeAfter && selectedImages.length >= 2 ? (
                     <>
-                      {/* Foto ANTES com tamanho exato de 50% */}
                       <div style={{ height: '50%', width: '100%', position: 'relative', borderBottom: '1px solid #c8a86b', overflow: 'hidden' }}>
-                        <img 
-                          src={selectedImages[0].url} 
-                          alt="Antes" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
-                        />
+                        <img src={selectedImages[0].url} alt="Antes" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         <span style={{ position: 'absolute', top: '10px', left: '10px', background: '#040a17', border: '1px solid #c8a86b', color: '#e6cf9d', fontSize: '9px', padding: '3px 9px', fontWeight: 'bold', borderRadius: '3px' }}>ANTES</span>
                       </div>
-                      {/* Foto DEPOIS com tamanho exato de 50% */}
                       <div style={{ height: '50%', width: '100%', position: 'relative', overflow: 'hidden' }}>
-                        <img 
-                          src={selectedImages[1].url} 
-                          alt="Depois" 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
-                        />
+                        <img src={selectedImages[1].url} alt="Depois" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         <span style={{ position: 'absolute', top: '10px', left: '10px', background: '#040a17', border: '1px solid #c8a86b', color: '#e6cf9d', fontSize: '9px', padding: '3px 9px', fontWeight: 'bold', borderRadius: '3px' }}>DEPOIS</span>
                       </div>
                     </>
                   ) : (
                     <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-                      <img 
-                        src={selectedImages[0].url} 
-                        alt="Caso" 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
-                      />
+                      <img src={selectedImages[0].url} alt="Caso" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                   )
                 ) : (
@@ -367,10 +540,10 @@ export default function Home() {
                 )}
               </div>
 
-              {/* RODAPÉ */}
+              {/* RODAPÉ: VALORES (Editável) + LEGENDA + BOTÃO */}
               <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 <p style={{ fontSize: '11px', color: '#e6cf9d', letterSpacing: '1.5px' }}>
-                  Naturalidade &bull; Harmonia &bull; Qualidade
+                  {customValuesLine}
                 </p>
 
                 <p style={{ fontSize: '11px', color: '#f3ece0', opacity: 0.9, lineHeight: '1.3' }}>
@@ -379,4 +552,68 @@ export default function Home() {
 
                 <div 
                   style={{ 
-                    background: 'linear-gradient(135deg, #e6cf9d, #c8a
+                    background: 'linear-gradient(135deg, #e6cf9d, #c8a86b 55%, #9c7f46)', 
+                    color: '#040a17', 
+                    padding: '10px 28px', 
+                    borderRadius: '999px', 
+                    fontSize: '12px', 
+                    fontWeight: '600',
+                    boxShadow: '0 4px 15px rgba(200, 168, 107, 0.4)',
+                    marginTop: '4px'
+                  }}
+                >
+                  {customCta}
+                </div>
+
+                <p style={{ fontSize: '10px', color: '#c8a86b', opacity: 0.8, marginTop: '2px' }}>
+                  {BRAND.name} &bull; {BRAND.cro}
+                </p>
+              </div>
+
+            </div>
+
+            <button className="btn" onClick={handleGenerateAndOpenDownload} style={{ width: '100%', marginTop: '6px' }}>
+              ⚡ Gerar & Baixar Imagem UHD
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL DE DOWNLOAD COM A IMAGEM PRONTA EM UHD */}
+      {previewModalOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(4, 10, 23, 0.95)', backdropFilter: 'blur(8px)',
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+        }}>
+          <div style={{
+            background: 'var(--navy)', border: '1px solid var(--gold)', borderRadius: '16px',
+            maxWidth: '460px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '18px',
+            display: 'grid', gap: '14px', justifyItems: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.8)'
+          }}>
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: 'var(--gold-l)' }}>
+                Arte Pronta em Alta Definição (UHD)
+              </h3>
+              <button onClick={() => setPreviewModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--gold)', fontSize: '18px', cursor: 'pointer' }}>
+                ✕
+              </button>
+            </div>
+
+            {renderedImageUrl && (
+              <img src={renderedImageUrl} alt="Render UHD" style={{ width: '100%', height: 'auto', borderRadius: '10px', border: '1px solid var(--gold-d)' }} />
+            )}
+
+            <div style={{ width: '100%', display: 'grid', gap: '8px' }}>
+              <button className="btn" onClick={handleDownload} style={{ width: '100%' }}>
+                ⬇️ Baixar Imagem Pronta (.PNG)
+              </button>
+              <button className="btn ghost" onClick={() => setPreviewModalOpen(false)} style={{ width: '100%', padding: '8px' }}>
+                Voltar e Ajustar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
