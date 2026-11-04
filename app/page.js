@@ -15,21 +15,6 @@ export default function Home() {
   const [valuesIndex, setValuesIndex] = useState(0);
   const [postCaptionIndex, setPostCaptionIndex] = useState(0);
 
-  // Listas de opções extras para Categoria e Valores
-  const categoryOptions = [
-    currentCaseObjCategories => currentCaseObj.categoryTitle,
-    () => "EXCELÊNCIA EM ODONTOLOGIA",
-    () => "ESTÉTICA E FUNCIONALIDADE",
-    () => "TRANSFORMAÇÃO DE SORRISOS"
-  ];
-
-  const valuesOptions = [
-    () => "Naturalidade · Harmonia · Qualidade",
-    () => "Precisão · Tecnologia · Conforto",
-    () => "Segurança · Estética · Durabilidade",
-    () => "Arte · Ciência · Sofisticação"
-  ];
-
   const currentCaseObj = DENTAL_CASES.find(c => c.id === selectedCase) || DENTAL_CASES[0];
 
   // Campos Totalmente Editáveis
@@ -66,7 +51,6 @@ export default function Home() {
     setCustomPostCaption(newObj.postCaptions[0]);
   };
 
-  // Funções de Navegação (Voltar / Próxima) para Categoria
   const prevCategory = () => {
     const cats = [currentCaseObj.categoryTitle, "EXCELÊNCIA EM ODONTOLOGIA", "ESTÉTICA E FUNCIONALIDADE", "TRANSFORMAÇÃO DE SORRISOS"];
     const nextIdx = categoryIndex === 0 ? cats.length - 1 : categoryIndex - 1;
@@ -80,7 +64,6 @@ export default function Home() {
     setCustomCategory(cats[nextIdx]);
   };
 
-  // Navegação Título Principal
   const prevTopCaption = () => {
     const nextIdx = topCaptionIndex === 0 ? currentCaseObj.topCaptions.length - 1 : topCaptionIndex - 1;
     setTopCaptionIndex(nextIdx);
@@ -92,7 +75,6 @@ export default function Home() {
     setCustomTopCaption(currentCaseObj.topCaptions[nextIdx]);
   };
 
-  // Navegação Valores / Qualidades
   const prevValues = () => {
     const vals = ["Naturalidade · Harmonia · Qualidade", "Precisão · Tecnologia · Conforto", "Segurança · Estética · Durabilidade", "Arte · Ciência · Sofisticação"];
     const nextIdx = valuesIndex === 0 ? vals.length - 1 : valuesIndex - 1;
@@ -106,7 +88,6 @@ export default function Home() {
     setCustomValuesLine(vals[nextIdx]);
   };
 
-  // Navegação Legenda Descritiva
   const prevPostCaption = () => {
     const nextIdx = postCaptionIndex === 0 ? currentCaseObj.postCaptions.length - 1 : postCaptionIndex - 1;
     setPostCaptionIndex(nextIdx);
@@ -118,22 +99,31 @@ export default function Home() {
     setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
 
+  // Função otimizada para carregar imagens tanto no desktop quanto no mobile
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
+    if (!files || files.length === 0) return;
+
     files.forEach(file => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImages(prev => [...prev, { url: reader.result }]);
+      reader.onload = (uploadEvent) => {
+        setSelectedImages(prev => [...prev, { url: uploadEvent.target.result }]);
+      };
+      reader.onerror = (error) => {
+        console.error("Erro ao ler o arquivo de imagem:", error);
+        alert("Não foi possível carregar esta imagem. Tente selecionar outra.");
       };
       reader.readAsDataURL(file);
     });
+    
+    // Limpa o valor do input para permitir selecionar a mesma foto novamente se necessário
+    e.target.value = '';
   };
 
   const removeImage = (index) => {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Gerador Inteligente por IA baseado no contexto inserido
   const handleAIGenerateText = () => {
     if (!patientContext.trim() && !procedureHighlights.trim()) {
       alert('Por favor, preencha ao menos um campo de contexto para a IA gerar de acordo!');
@@ -380,7 +370,7 @@ export default function Home() {
             </button>
           </div>
 
-          {/* SUBTÍTULO / CATEGORIA (Com setas de navegação) */}
+          {/* SUBTÍTULO / CATEGORIA */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Subtítulo / Categoria (Superior)</span>
@@ -396,7 +386,7 @@ export default function Home() {
             />
           </div>
 
-          {/* TÍTULO PRINCIPAL (Com setas de navegação) */}
+          {/* TÍTULO PRINCIPAL */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Frase Título Principal</span>
@@ -412,7 +402,7 @@ export default function Home() {
             />
           </div>
 
-          {/* VALORES / QUALIDADES (Com setas de navegação) */}
+          {/* VALORES / QUALIDADES */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Valores / Qualidades (Inferior)</span>
@@ -428,7 +418,7 @@ export default function Home() {
             />
           </div>
 
-          {/* LEGENDA DESCRITIVA (Com setas de navegação) */}
+          {/* LEGENDA DESCRITIVA */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Texto / Legenda Descritiva</span>
@@ -466,13 +456,14 @@ export default function Home() {
             </label>
           </div>
 
+          {/* UPLOAD OTIMIZADO PARA MOBILE */}
           <label>
             Fotos do Caso Clínico
             <div className="drop" onClick={() => document.getElementById('fileInput').click()}>
               {selectedImages.length > 0 ? (
-                <span>{selectedImages.length} foto(s) anexada(s). Clique para gerenciar.</span>
+                <span>{selectedImages.length} foto(s) anexada(s). Clique para adicionar mais.</span>
               ) : (
-                <span>Clique aqui para selecionar as fotos em alta definição</span>
+                <span>Toque aqui para selecionar as fotos da galeria ou tirar da câmera</span>
               )}
             </div>
             <input 
