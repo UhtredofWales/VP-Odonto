@@ -30,7 +30,6 @@ export default function Home() {
   const [renderedImageUrl, setRenderedImageUrl] = useState(null);
   
   const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
   const currentFormatObj = FORMAT_OPTIONS.find(f => f.id === selectedFormat) || FORMAT_OPTIONS[2];
 
   const handleCaseChange = (e) => {
@@ -96,17 +95,24 @@ export default function Home() {
     setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
 
-  // Método ultra-compatível com iPhone e Safari Mobile usando ObjectURL nativo
+  // Leitura segura por Base64 otimizada especificamente para evitar falhas no iOS/Safari
   const handleImageChange = (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newImages = Array.from(files).map(file => ({
-      url: URL.createObjectURL(file),
-      name: file.name
-    }));
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const base64Result = uploadEvent.target.result;
+        setSelectedImages(prev => [...prev, { url: base64Result, name: file.name }]);
+      };
+      reader.onerror = (err) => {
+        console.error("Erro no FileReader:", err);
+        alert("Erro ao carregar a imagem no iOS. Tente selecionar outra foto.");
+      };
+      reader.readAsDataURL(file);
+    });
 
-    setSelectedImages(prev => [...prev, ...newImages]);
     e.target.value = null;
   };
 
@@ -439,24 +445,31 @@ export default function Home() {
             </label>
           </div>
 
-          {/* INPUT NATIVO OTIMIZADO PARA IPHONE / SAFARI */}
-          <label>
+          {/* INPUT NATIVO ESTILO OVERLAY TRANSPARENTE 100% COMPATÍVEL COM O SAFARI NO IPHONE */}
+          <label style={{ display: 'grid', gap: '5px', fontSize: '13px', color: 'var(--gold-l)' }}>
             Fotos do Caso Clínico
-            <div className="drop" onClick={() => fileInputRef.current && fileInputRef.current.click()}>
+            <div className="drop" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '10px' }}>
               {selectedImages.length > 0 ? (
                 <span>{selectedImages.length} foto(s) anexada(s). Toque para adicionar mais.</span>
               ) : (
                 <span>Toque aqui para selecionar fotos da Fototeca ou Câmera (iPhone)</span>
               )}
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                onChange={handleImageChange}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: 0,
+                  width: '100%',
+                  height: '100%',
+                  cursor: 'pointer',
+                  zIndex: 10
+                }}
+              />
             </div>
-            <input 
-              ref={fileInputRef}
-              type="file" 
-              multiple 
-              accept="image/*" 
-              onChange={handleImageChange}
-              style={{ display: 'none' }}
-            />
           </label>
 
           {selectedImages.length > 0 && (
