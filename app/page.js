@@ -135,6 +135,7 @@ export default function Home() {
     }
   };
 
+  // Motor Canvas UHD corrigido para espelhar perfeitamente o preview visual
   const handleGenerateAndOpenDownload = () => {
     setIsRendering(true);
     const canvas = canvasRef.current;
@@ -145,40 +146,54 @@ export default function Home() {
     canvas.width = w;
     canvas.height = h;
 
+    // 1. Fundo Deep Navy exato
     ctx.fillStyle = '#040a17';
     ctx.fillRect(0, 0, w, h);
 
+    // 2. Moldura Dourada Externa
     ctx.strokeStyle = '#c8a86b';
-    ctx.lineWidth = Math.max(8, Math.round(w * 0.007));
-    ctx.strokeRect(30, 30, w - 60, h - 60);
+    ctx.lineWidth = Math.max(10, Math.round(w * 0.012));
+    ctx.strokeRect(35, 35, w - 70, h - 70);
 
     const centerX = w / 2;
 
-    ctx.fillStyle = '#f3ece0';
-    ctx.font = `600 ${Math.round(w * 0.032)}px Jost, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`Dr. ${BRAND.name}`, centerX, 110);
+    // 3. Bloco do Topo (Logo simulada, Nome, Categoria, Título)
+    let currentY = 120;
 
+    // Nome do Doutor
+    ctx.fillStyle = '#f3ece0';
+    ctx.font = `600 ${Math.round(w * 0.035)}px Jost, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`Dr. ${BRAND.name}`, centerX, currentY);
+
+    // Categoria
+    currentY += 50;
     ctx.fillStyle = '#c8a86b';
     ctx.font = `500 ${Math.round(w * 0.024)}px Jost, sans-serif`;
     ctx.letterSpacing = '3px';
-    ctx.fillText(customCategory.toUpperCase(), centerX, 155);
+    ctx.fillText(customCategory.toUpperCase(), centerX, currentY);
 
+    // Linha divisória
+    currentY += 25;
     ctx.strokeStyle = '#9c7f46';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(centerX - 60, 185);
-    ctx.lineTo(centerX + 60, 185);
+    ctx.moveTo(centerX - 50, currentY);
+    ctx.lineTo(centerX + 50, currentY);
     ctx.stroke();
 
+    // Título Principal
+    currentY += 60;
     ctx.fillStyle = '#f3ece0';
-    ctx.font = `500 ${Math.round(w * 0.046)}px "Cormorant Garamond", serif`;
-    ctx.fillText(`“${customTopCaption}”`, centerX, 245);
+    ctx.font = `500 ${Math.round(w * 0.052)}px "Cormorant Garamond", serif`;
+    ctx.fillText(`“${customTopCaption}”`, centerX, currentY);
 
-    const boxX = 60;
-    const boxY = 290;
-    const boxW = w - 120;
-    const boxH = Math.round(h * 0.48);
+    // 4. Área Central de Fotos (Antes e Depois Simétrico)
+    const boxX = 65;
+    const boxY = currentY + 40;
+    const boxW = w - 130;
+    // Altura proporcional exata baseada no formato escolhido
+    const boxH = Math.round(h * 0.46);
 
     ctx.fillStyle = '#071328';
     ctx.strokeStyle = '#c8a86b';
@@ -187,36 +202,63 @@ export default function Home() {
     ctx.strokeRect(boxX, boxY, boxW, boxH);
 
     const finishRendering = () => {
-      const footerY = boxY + boxH + 40;
+      // 5. Bloco do Rodapé (Valores, Legenda, Botão CTA, CRO)
+      let footerY = boxY + boxH + 60;
 
+      // Valores / Qualidades
       ctx.fillStyle = '#e6cf9d';
-      ctx.font = `400 ${Math.round(w * 0.026)}px Jost, sans-serif`;
+      ctx.font = `400 ${Math.round(w * 0.027)}px Jost, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(customValuesLine, centerX, footerY);
 
+      // Legenda Descritiva
+      footerY += 55;
       ctx.fillStyle = '#f3ece0';
-      ctx.font = `300 ${Math.round(w * 0.027)}px Jost, sans-serif`;
-      ctx.fillText(customPostCaption, centerX, footerY + 50, boxW);
+      ctx.font = `300 ${Math.round(w * 0.029)}px Jost, sans-serif`;
+      
+      // Quebra de texto automática simples para a legenda não estourar as bordas
+      const maxTextWidth = boxW;
+      const words = customPostCaption.split(' ');
+      let line = '';
+      let lines = [];
 
-      const btnW = Math.round(w * 0.55);
-      const btnH = 65;
+      for (let n = 0; n < words.length; n++) {
+        let testLine = line + words[n] + ' ';
+        let metrics = ctx.measureText(testLine);
+        if (metrics.width > maxTextWidth && n > 0) {
+          lines.push(line);
+          line = words[n] + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      lines.push(line);
+
+      lines.forEach((l, idx) => {
+        ctx.fillText(l.trim(), centerX, footerY + (idx * 38));
+      });
+
+      // Botão CTA Pill Dourado
+      const btnW = Math.round(w * 0.6);
+      const btnH = 75;
       const btnX = (w - btnW) / 2;
-      const btnY = footerY + 90;
+      const btnY = footerY + (lines.length * 38) + 30;
 
       ctx.fillStyle = '#c8a86b';
       ctx.beginPath();
-      ctx.roundRect(btnX, btnY, btnW, btnH, 32);
+      ctx.roundRect(btnX, btnY, btnW, btnH, 38);
       ctx.fill();
 
       ctx.fillStyle = '#040a17';
-      ctx.font = `600 ${Math.round(w * 0.03)}px Jost, sans-serif`;
+      ctx.font = `600 ${Math.round(w * 0.032)}px Jost, sans-serif`;
       ctx.textBaseline = 'middle';
       ctx.fillText(customCta, centerX, btnY + btnH / 2);
       ctx.textBaseline = 'alphabetic';
 
+      // CRO Rodapé
       ctx.fillStyle = '#c8a86b';
-      ctx.font = `400 ${Math.round(w * 0.022)}px Jost, sans-serif`;
-      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 45);
+      ctx.font = `400 ${Math.round(w * 0.023)}px Jost, sans-serif`;
+      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 50);
 
       const dataUrl = canvas.toDataURL('image/png');
       setRenderedImageUrl(dataUrl);
@@ -232,27 +274,31 @@ export default function Home() {
         img1.src = selectedImages[0].url;
         img1.onload = () => {
           ctx.drawImage(img1, boxX, boxY, boxW, halfH);
+          
+          // Selo ANTES
           ctx.fillStyle = '#040a17';
           ctx.strokeStyle = '#c8a86b';
           ctx.lineWidth = 2;
-          ctx.fillRect(boxX + 15, boxY + 15, 90, 34);
-          ctx.strokeRect(boxX + 15, boxY + 15, 90, 34);
+          ctx.fillRect(boxX + 15, boxY + 15, 110, 40);
+          ctx.strokeRect(boxX + 15, boxY + 15, 110, 40);
           ctx.fillStyle = '#e6cf9d';
-          ctx.font = `600 ${Math.round(w * 0.018)}px Jost, sans-serif`;
-          ctx.fillText('ANTES', boxX + 60, boxY + 36);
+          ctx.font = `600 ${Math.round(w * 0.02)}px Jost, sans-serif`;
+          ctx.fillText('ANTES', boxX + 70, boxY + 41);
 
           let img2 = new Image();
           img2.crossOrigin = 'anonymous';
           img2.src = selectedImages[1].url;
           img2.onload = () => {
             ctx.drawImage(img2, boxX, boxY + halfH, boxW, halfH);
+            
+            // Selo DEPOIS
             ctx.fillStyle = '#040a17';
             ctx.strokeStyle = '#c8a86b';
             ctx.lineWidth = 2;
-            ctx.fillRect(boxX + 15, boxY + halfH + 15, 90, 34);
-            ctx.strokeRect(boxX + 15, boxY + halfH + 15, 90, 34);
+            ctx.fillRect(boxX + 15, boxY + halfH + 15, 110, 40);
+            ctx.strokeRect(boxX + 15, boxY + halfH + 15, 110, 40);
             ctx.fillStyle = '#e6cf9d';
-            ctx.fillText('DEPOIS', boxX + 60, boxY + halfH + 36);
+            ctx.fillText('DEPOIS', boxX + 70, boxY + halfH + 41);
 
             finishRendering();
           };
@@ -277,11 +323,9 @@ export default function Home() {
   const handleDownload = () => {
     if (!renderedImageUrl) return;
     
-    // Detecção se é dispositivo móvel Apple (iPhone / iPad)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     if (isIOS) {
-      // No iPhone, abre a imagem em uma nova aba limpa para o usuário pressionar e salvar nas fotos
       const newTab = window.open();
       if (newTab) {
         newTab.document.write(`
@@ -297,7 +341,6 @@ export default function Home() {
         window.location.href = renderedImageUrl;
       }
     } else {
-      // Download direto padrão para PC / Android
       const link = document.createElement('a');
       link.download = `post-${selectedCase}-${selectedFormat}-UHD.png`;
       link.href = renderedImageUrl;
