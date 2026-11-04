@@ -1,33 +1,33 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { BRAND, DENTAL_CASES, FORMAT_OPTIONS } from '../lib/brand';
 
 export default function Home() {
   const [selectedCase, setSelectedCase] = useState(DENTAL_CASES[0].id);
-  const [selectedFormat, setSelectedFormat] = useState(FORMAT_OPTIONS[0].id);
+  const [selectedFormat, setSelectedFormat] = useState(FORMAT_OPTIONS[2].id); // Story 9:16 como padrão
   const [selectedImages, setSelectedImages] = useState([]);
-  
-  // Opção de Antes e Depois (Ativada por padrão)
-  const [useBeforeAfter, setUseBeforeAfter] = useState(true);
+  const [useBeforeAfter, setUseBeforeAfter] = useState(false);
 
-  // Navegação de títulos e legendas
+  // Seleção e Navegação de Frases
   const [topCaptionIndex, setTopCaptionIndex] = useState(0);
   const [postCaptionIndex, setPostCaptionIndex] = useState(0);
 
-  // Campos manuais para personalização ou IA automática
+  // Edição Livre
   const [customTopCaption, setCustomTopCaption] = useState('');
   const [customPostCaption, setCustomPostCaption] = useState('');
   const [customCta, setCustomCta] = useState('');
 
+  // Perguntas de Contexto para a IA
+  const [patientContext, setPatientContext] = useState('');
+  const [procedureHighlights, setProcedureHighlights] = useState('');
+
   const [isRendering, setIsRendering] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [renderedImageDataUrl, setRenderedImageDataUrl] = useState(null);
-
-  const canvasRef = useRef(null);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState(null);
 
   const currentCaseObj = DENTAL_CASES.find(c => c.id === selectedCase) || DENTAL_CASES[0];
-  const currentFormatObj = FORMAT_OPTIONS.find(f => f.id === selectedFormat) || FORMAT_OPTIONS[0];
+  const currentFormatObj = FORMAT_OPTIONS.find(f => f.id === selectedFormat) || FORMAT_OPTIONS[2];
 
   const handleCaseChange = (e) => {
     setSelectedCase(e.target.value);
@@ -35,7 +35,6 @@ export default function Home() {
     setPostCaptionIndex(0);
     setCustomTopCaption('');
     setCustomPostCaption('');
-    setCustomCta('');
   };
 
   const prevTopCaption = () => {
@@ -58,259 +57,100 @@ export default function Home() {
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-    const newPreviews = files.map(file => ({
-      file,
-      url: URL.createObjectURL(file),
-      name: file.name
-    }));
-    setSelectedImages(prev => [...prev, ...newPreviews]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImages(prev => [...prev, {
+          file,
+          url: reader.result,
+          name: file.name
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const removeImage = (index) => {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Textos finais ativos (prioriza o que o usuário digitar manualmente, senão usa o catálogo)
+  // Textos finais com prioridade de edição ou geração
   const activeTopCaption = customTopCaption.trim() || currentCaseObj.topCaptions[topCaptionIndex];
   const activePostCaption = customPostCaption.trim() || currentCaseObj.postCaptions[postCaptionIndex];
-  const activeCta = customCta.trim() || currentCaseObj.ctaButtons[0] || "Agende sua avaliação";
+  const activeCta = customCta.trim() || "Agende sua avaliação";
 
-  // Botão gerador automático por IA (Simula refinamento inteligente instantâneo)
+  // Gerador Inteligente por IA baseado nos campos
   const handleAIGenerateText = () => {
-    const aiVariationsTop = [
-      `Transformação surpreendente em ${currentCaseObj.label.toLowerCase()}.`,
-      `Recupere sua harmonia estética com segurança e precisão.`,
-      `Cada sorriso é uma obra de arte planejada para você.`
-    ];
-    const aiVariationsPost = [
-      `Procedimento realizado com tecnologia de ponta, preservando a naturalidade e garantindo durabilidade.`,
-      `Estética e função caminhando juntas para transformar o seu sorriso e sua autoestima.`
-    ];
-    const randomTop = aiVariationsTop[Math.floor(Math.random() * aiVariationsTop.length)];
-    const randomPost = aiVariationsPost[Math.floor(Math.random() * aiVariationsPost.length)];
-    
-    setCustomTopCaption(randomTop);
-    setCustomPostCaption(randomPost);
+    let topText = `Volte a sorrir com ${patientContext.trim() || "confiança"}.`;
+    let postText = procedureHighlights.trim() 
+      ? `${procedureHighlights.trim()}. Um novo sorriso começa com cuidado e precisão.` 
+      : "Naturalidade · Harmonia · Qualidade";
+
+    setCustomTopCaption(topText);
+    setCustomPostCaption(postText);
   };
 
-  // Renderizador UHD idêntico aos exemplos enviados
-  const renderCanvasPost = () => {
-    return new Promise((resolve, reject) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return reject('Canvas não disponível');
+  // Envio para a Manus e Abertura do Modal de Previsão UHD
+  const handleGeneratePost = async () => {
+    if (selectedImages.length === 0) {
+      alert('Por favor, anexe pelo menos uma foto para o post.');
+      return;
+    }
 
-      const ctx = canvas.getContext('2d');
-      const w = currentFormatObj.width;
-      const h = currentFormatObj.height;
-
-      canvas.width = w;
-      canvas.height = h;
-
-      // 1. Fundo Deep Navy exato
-      ctx.fillStyle = '#040a17';
-      ctx.fillRect(0, 0, w, h);
-
-      // 2. Moldura Dourada Externa
-      ctx.strokeStyle = '#c8a86b';
-      ctx.lineWidth = 6;
-      ctx.strokeRect(30, 30, w - 60, h - 60);
-
-      const topHeaderH = Math.round(h * 0.17);
-      const footerH = Math.round(h * 0.20);
-      const contentH = h - topHeaderH - footerH;
-
-      // 3. Logo Gráfico Centralizado (Simulado em vetor dourado nítido)
-      const logoY = 65;
-      ctx.strokeStyle = '#c8a86b';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(w / 2 - 120, logoY, 14, Math.PI, 0, false);
-      ctx.stroke();
-
-      // Nome do Doutor no Topo
-      ctx.fillStyle = '#f3ece0';
-      ctx.font = `600 ${Math.round(w * 0.032)}px Jost, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(`Dr. ${BRAND.name}`, w / 2, logoY + 6);
-
-      // Linhas decorativas do topo
-      ctx.strokeStyle = '#9c7f46';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(w / 2 - 220, logoY + 25);
-      ctx.lineTo(w / 2 - 140, logoY + 25);
-      ctx.moveTo(w / 2 + 140, logoY + 25);
-      ctx.lineTo(w / 2 + 220, logoY + 25);
-      ctx.stroke();
-
-      // 4. Categoria do Caso (ex: RESINAS COMPOSTAS)
-      ctx.fillStyle = '#c8a86b';
-      ctx.font = `500 ${Math.round(w * 0.022)}px Jost, sans-serif`;
-      ctx.letterSpacing = '3px';
-      ctx.fillText(currentCaseObj.categoryTitle, w / 2, 125);
-
-      // 5. Título Principal (Cormorant Garamond)
-      ctx.fillStyle = '#f3ece0';
-      ctx.font = `600 ${Math.round(w * 0.046)}px "Cormorant Garamond", serif`;
-      ctx.fillText(`“${activeTopCaption}”`, w / 2, 175);
-
-      // Linha sutil separadora
-      ctx.strokeStyle = '#9c7f46';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(w * 0.3, 205);
-      ctx.lineTo(w * 0.7, 205);
-      ctx.stroke();
-
-      // 6. Área das Fotos (Com Moldura Exata dos Exemplos)
-      const drawImages = () => {
-        const imgAreaY = topHeaderH + 20;
-        const imgAreaH = contentH - 30;
-        const imgAreaW = w - 100;
-        const imgAreaX = 50;
-
-        // Fundo da caixa de fotos
-        ctx.fillStyle = '#071328';
-        ctx.strokeStyle = '#c8a86b';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(imgAreaX, imgAreaY, imgAreaW, imgAreaH);
-
-        if (selectedImages.length === 0) {
-          ctx.fillStyle = '#c8a86b';
-          ctx.font = `300 ${Math.round(w * 0.03)}px Jost, sans-serif`;
-          ctx.fillText('Nenhuma foto anexada', w / 2, imgAreaY + imgAreaH / 2);
-          drawFooter();
-          return;
-        }
-
-        if (useBeforeAfter && selectedImages.length >= 2) {
-          const halfH = (imgAreaH - 12) / 2;
-
-          let img1 = new Image();
-          img1.crossOrigin = 'anonymous';
-          img1.src = selectedImages[0].url;
-
-          img1.onload = () => {
-            // Imagem 1 (Antes)
-            ctx.drawImage(img1, imgAreaX + 3, imgAreaY + 3, imgAreaW - 6, halfH - 3);
-            drawBadge("ANTES", imgAreaX + 24, imgAreaY + 20);
-
-            let img2 = new Image();
-            img2.crossOrigin = 'anonymous';
-            img2.src = selectedImages[1].url;
-
-            img2.onload = () => {
-              // Imagem 2 (Depois)
-              const secondY = imgAreaY + halfH + 6;
-              ctx.drawImage(img2, imgAreaX + 3, secondY, imgAreaW - 6, halfH - 3);
-              drawBadge("DEPOIS", imgAreaX + 24, secondY + 20);
-
-              drawFooter();
-            };
-            img2.onerror = () => drawFooter();
-          };
-          img1.onerror = () => drawFooter();
-        } else {
-          let img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.src = selectedImages[0].url;
-
-          img.onload = () => {
-            ctx.drawImage(img, imgAreaX + 3, imgAreaY + 3, imgAreaW - 6, imgAreaH - 6);
-            drawFooter();
-          };
-          img.onerror = () => drawFooter();
-        }
-      };
-
-      const drawBadge = (text, x, y) => {
-        ctx.fillStyle = '#071328';
-        ctx.strokeStyle = '#c8a86b';
-        ctx.lineWidth = 2;
-        ctx.fillRect(x, y, 120, 38);
-        ctx.strokeRect(x, y, 120, 38);
-
-        ctx.fillStyle = '#e6cf9d';
-        ctx.font = `600 ${Math.round(w * 0.022)}px Jost, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, x + 60, y + 19);
-        ctx.textBaseline = 'alphabetic';
-      };
-
-      // 7. Rodapé com Descrição e Botão CTA
-      const drawFooter = () => {
-        const footerY = h - footerH;
-
-        // Texto descritivo centralizado
-        ctx.fillStyle = '#f3ece0';
-        ctx.font = `300 ${Math.round(w * 0.027)}px Jost, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(activePostCaption, w / 2, footerY + 35);
-
-        // Botão Dourado de CTA (Agende sua avaliação)
-        const btnW = Math.round(w * 0.6);
-        const btnH = 64;
-        const btnX = (w - btnW) / 2;
-        const btnY = footerY + 60;
-
-        ctx.fillStyle = '#c8a86b';
-        ctx.beginPath();
-        ctx.roundRect(btnX, btnY, btnW, btnH, 32);
-        ctx.fill();
-
-        ctx.fillStyle = '#040a17';
-        ctx.font = `600 ${Math.round(w * 0.03)}px Jost, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(activeCta, w / 2, btnY + btnH / 2);
-
-        resolve(canvas.toDataURL('image/png'));
-      };
-
-      drawImages();
-    });
-  };
-
-  const handleOpenPreview = async () => {
     setIsRendering(true);
     try {
-      const dataUrl = await renderCanvasPost();
-      setRenderedImageDataUrl(dataUrl);
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          images: selectedImages.map(img => img.url),
+          caseType: selectedCase,
+          topCaption: activeTopCaption,
+          postCaption: activePostCaption,
+          ctaText: activeCta,
+          format: selectedFormat,
+          useBeforeAfter,
+          patientContext,
+          procedureHighlights
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro no processamento da imagem.');
+
+      setGeneratedImageUrl(data.imageUrl || selectedImages[0].url);
       setPreviewModalOpen(true);
     } catch (err) {
-      alert('Erro ao gerar pré-visualização: ' + err);
+      alert('Erro ao gerar post: ' + err.message);
     } finally {
       setIsRendering(false);
     }
   };
 
   const handleDownloadImage = () => {
-    if (!renderedImageDataUrl) return;
+    if (!generatedImageUrl) return;
     const link = document.createElement('a');
     link.download = `post-${selectedCase}-${selectedFormat}-UHD.png`;
-    link.href = renderedImageDataUrl;
+    link.href = generatedImageUrl;
     link.click();
   };
 
   return (
     <div className="wrap">
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
-
       <header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <img src="/logo-gold.png" alt="Logo" style={{ height: '36px' }} />
           <h1>Central de Posts &middot; Odontologia</h1>
         </div>
-        <span className="uhd-badge">QUALIDADE UHD</span>
+        <span className="uhd-badge">MANUS IA &bull; UHD</span>
       </header>
 
       <div className="grid">
+        {/* PAINEL DE CONTROLES */}
         <div className="panel">
           
-          {/* Formato */}
           <label>
-            Formato (Instagram)
+            Formato de Saída (Instagram)
             <div className="seg">
               {FORMAT_OPTIONS.map(fmt => (
                 <button
@@ -325,7 +165,6 @@ export default function Home() {
             </div>
           </label>
 
-          {/* Caso Clínico */}
           <label>
             Caso Clínico / Procedimento
             <select value={selectedCase} onChange={handleCaseChange}>
@@ -335,20 +174,46 @@ export default function Home() {
             </select>
           </label>
 
-          {/* BOTÃO DE GERAÇÃO INTELIGENTE POR IA */}
-          <button 
-            type="button" 
-            className="btn ghost" 
-            onClick={handleAIGenerateText}
-            style={{ width: '100%', borderColor: 'var(--gold)', color: 'var(--gold-l)', padding: '10px' }}
-          >
-            ✨ Gerar Textos Automaticamente com IA
-          </button>
+          {/* PERGUNTAS DA IA */}
+          <div style={{ borderTop: '1px solid var(--gold-d)', paddingTop: '10px', display: 'grid', gap: '8px' }}>
+            <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--gold)' }}>
+              🤖 Instruções do Caso para a IA:
+            </span>
 
-          {/* TÍTULO PRINCIPAL COM BOTÕES DE NAVEGAÇÃO E EDIÇÃO */}
+            <label>
+              1. Qual o perfil do paciente ou objetivo do caso?
+              <input 
+                type="text" 
+                value={patientContext} 
+                onChange={(e) => setPatientContext(e.target.value)}
+                placeholder="Ex: Confiança, estética natural, dentes alinhados..." 
+              />
+            </label>
+
+            <label>
+              2. Ponto principal a destacar no procedimento?
+              <input 
+                type="text" 
+                value={procedureHighlights} 
+                onChange={(e) => setProcedureHighlights(e.target.value)}
+                placeholder="Ex: Sem dor, agilidade, máxima precisão..." 
+              />
+            </label>
+
+            <button 
+              type="button" 
+              className="btn ghost" 
+              onClick={handleAIGenerateText}
+              style={{ width: '100%', borderColor: 'var(--gold)', color: 'var(--gold-l)', marginTop: '4px' }}
+            >
+              ✨ Processar Textos com a IA
+            </button>
+          </div>
+
+          {/* NAVEGAÇÃO DE TÍTULO */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Frase Título (Foto)</span>
+              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Frase Título (Superior)</span>
               <div className="row" style={{ gap: '4px' }}>
                 <button type="button" className="btn ghost" onClick={prevTopCaption}>&lsaquo; Voltar</button>
                 <button type="button" className="btn ghost" onClick={nextTopCaption}>Próxima &rsaquo;</button>
@@ -358,14 +223,14 @@ export default function Home() {
               type="text" 
               value={activeTopCaption}
               onChange={(e) => setCustomTopCaption(e.target.value)}
-              placeholder="Digite ou escolha nas setas acima..."
+              placeholder="Digite o título ou use as setas..."
             />
           </div>
 
-          {/* LEGENDA COM BOTÕES DE NAVEGAÇÃO E EDIÇÃO */}
+          {/* NAVEGAÇÃO DE LEGENDA */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Legenda / Descrição</span>
+              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Legenda / Destaques</span>
               <div className="row" style={{ gap: '4px' }}>
                 <button type="button" className="btn ghost" onClick={prevPostCaption}>&lsaquo; Voltar</button>
                 <button type="button" className="btn ghost" onClick={nextPostCaption}>Próxima &rsaquo;</button>
@@ -375,11 +240,10 @@ export default function Home() {
               rows="2"
               value={activePostCaption}
               onChange={(e) => setCustomPostCaption(e.target.value)}
-              placeholder="Digite ou escolha nas setas acima..."
+              placeholder="Digite a legenda ou use as setas..."
             />
           </div>
 
-          {/* BOTÃO CTA */}
           <label>
             Texto do Botão (CTA)
             <input 
@@ -390,7 +254,6 @@ export default function Home() {
             />
           </label>
 
-          {/* OPÇÃO ANTES E DEPOIS */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--gold-l)' }}>
             <input 
               type="checkbox" 
@@ -400,18 +263,17 @@ export default function Home() {
               style={{ width: '15px', height: '15px', accentColor: 'var(--gold)' }}
             />
             <label htmlFor="beforeAfterCheck" style={{ cursor: 'pointer', margin: 0 }}>
-              Exibir duas fotos empilhadas com selos "Antes e Depois"
+              Ativar modo "Antes e Depois" (requer 2 fotos)
             </label>
           </div>
 
-          {/* UPLOAD DE FOTOS */}
           <label>
-            Fotos do Caso (Envie 2 para Antes / Depois)
+            Fotos do Caso Clínico
             <div className="drop" onClick={() => document.getElementById('fileInput').click()}>
               {selectedImages.length > 0 ? (
-                <span>{selectedImages.length} foto(s) anexada(s). Clique para adicionar mais.</span>
+                <span>{selectedImages.length} foto(s) anexada(s). Clique para gerenciar.</span>
               ) : (
-                <span>Clique aqui para carregar as fotos</span>
+                <span>Clique aqui para selecionar as fotos em alta definição</span>
               )}
             </div>
             <input 
@@ -440,70 +302,130 @@ export default function Home() {
             </div>
           )}
 
-          <button className="btn" onClick={handleOpenPreview} disabled={isRendering}>
-            {isRendering ? 'Renderizando em UHD...' : '👁️ Pré-visualizar Imagem Final'}
+          <button className="btn" onClick={handleGeneratePost} disabled={isRendering}>
+            {isRendering ? 'Renderizando Arte UHD...' : '⚡ Gerar Post Final em Resolução UHD'}
           </button>
 
         </div>
 
-        {/* PREVIEW MOBILE */}
+        {/* PREVIEW EM TEMPO REAL FIEL AO EXEMPLO DE REFERÊNCIA */}
         <div className="stage">
           <div className="preview-card">
             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '11px', color: 'var(--gold-l)', textTransform: 'uppercase' }}>
-                Preview Exato do Layout
+                Preview Fiel do Layout
               </span>
               <span style={{ fontSize: '11px', color: 'var(--gold)' }}>
                 {currentFormatObj.label.split(" ")[0]}
               </span>
             </div>
 
-            <div className="preview-container" style={{ aspectRatio: currentFormatObj.ratio }}>
-              <div style={{ padding: '10px 12px', textAlign: 'center', borderBottom: '1px solid var(--gold-d)', background: 'var(--navy)' }}>
-                <p style={{ fontSize: '10px', color: 'var(--cream)', fontWeight: '500' }}>Dr. {BRAND.name}</p>
-                <span style={{ fontSize: '8px', color: 'var(--gold)', letterSpacing: '1px' }}>{currentCaseObj.categoryTitle}</span>
-                <p style={{ fontFamily: 'var(--serif)', fontSize: '13px', color: 'var(--gold-l)', fontWeight: '600', marginTop: '2px' }}>
+            {/* CARD FIEL À REFERÊNCIA */}
+            <div 
+              className="preview-container" 
+              style={{ 
+                aspectRatio: currentFormatObj.ratio, 
+                border: '1px solid var(--gold)', 
+                borderRadius: '16px',
+                padding: '24px 16px',
+                background: 'var(--deep)',
+                display: 'flex',
+                flexDirection: 'column',
+                justify: 'space-between',
+                alignItems: 'center',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.8)'
+              }}
+            >
+              
+              {/* TOPO: LOGO + NOME + CATEGORIA + TÍTULO */}
+              <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src="/logo-gold.png" alt="Logo" style={{ height: '22px', width: 'auto' }} />
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--cream)' }}>Dr. {BRAND.name}</span>
+                </div>
+
+                <span style={{ fontSize: '9px', color: 'var(--gold)', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>
+                  {currentCaseObj.categoryTitle}
+                </span>
+
+                <div style={{ width: '40px', height: '1px', background: 'var(--gold-d)', margin: '4px 0' }} />
+
+                <h2 style={{ fontFamily: 'var(--serif)', fontSize: '20px', color: 'var(--cream)', fontWeight: '500', lineHeight: '1.2', margin: '4px 0' }}>
                   &ldquo;{activeTopCaption}&rdquo;
-                </p>
+                </h2>
               </div>
 
-              <div style={{ flex: 1, position: 'relative', background: '#071328', display: 'flex', flexDirection: 'column', padding: '6px', gap: '6px' }}>
+              {/* MOLDURA CENTRAL DA FOTO / ANTES E DEPOIS */}
+              <div 
+                style={{ 
+                  width: '100%', 
+                  flex: 1, 
+                  margin: '12px 0', 
+                  border: '1px solid var(--gold-d)', 
+                  borderRadius: '12px', 
+                  overflow: 'hidden', 
+                  background: '#071328', 
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
                 {selectedImages.length > 0 ? (
                   useBeforeAfter && selectedImages.length >= 2 ? (
                     <>
-                      <div style={{ flex: 1, position: 'relative', border: '1px solid var(--gold)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, position: 'relative', borderBottom: '1px solid var(--gold-d)' }}>
                         <img src={selectedImages[0].url} alt="Antes" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <span style={{ position: 'absolute', top: '4px', left: '4px', background: 'var(--deep)', border: '1px solid var(--gold)', color: 'var(--gold-l)', fontSize: '7px', padding: '2px 6px', fontWeight: 'bold' }}>ANTES</span>
+                        <span style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(4, 10, 23, 0.9)', border: '1px solid var(--gold)', color: 'var(--gold-l)', fontSize: '8px', padding: '2px 8px', fontWeight: 'bold', borderRadius: '3px' }}>ANTES</span>
                       </div>
-                      <div style={{ flex: 1, position: 'relative', border: '1px solid var(--gold)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, position: 'relative' }}>
                         <img src={selectedImages[1].url} alt="Depois" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        <span style={{ position: 'absolute', top: '4px', left: '4px', background: 'var(--deep)', border: '1px solid var(--gold)', color: 'var(--gold-l)', fontSize: '7px', padding: '2px 6px', fontWeight: 'bold' }}>DEPOIS</span>
+                        <span style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(4, 10, 23, 0.9)', border: '1px solid var(--gold)', color: 'var(--gold-l)', fontSize: '8px', padding: '2px 8px', fontWeight: 'bold', borderRadius: '3px' }}>DEPOIS</span>
                       </div>
                     </>
                   ) : (
-                    <div style={{ flex: 1, position: 'relative', border: '1px solid var(--gold)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <img src={selectedImages[0].url} alt="Caso" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
+                    <img src={selectedImages[0].url} alt="Caso" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )
                 ) : (
-                  <div style={{ flex: '1', display: 'grid', placeItems: 'center', color: 'var(--gold-d)', fontSize: '11px', textAlign: 'center', padding: '10px' }}>
-                    Envie 2 fotos para visualizar o Antes e Depois
+                  <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--gold-d)', fontSize: '11px', textAlign: 'center', padding: '16px' }}>
+                    Anexe as fotos para visualizar o enquadramento na moldura
                   </div>
                 )}
               </div>
 
-              <div style={{ padding: '10px 12px', background: 'var(--navy)', borderTop: '1px solid var(--gold-d)', textAlign: 'center', display: 'grid', gap: '6px' }}>
-                <p style={{ fontSize: '9px', color: 'var(--cream)', lineHeight: '1.2' }}>
+              {/* RODAPÉ: VALORES + FRASE + BOTÃO PILL + CREDENCIAIS */}
+              <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <p style={{ fontSize: '10px', color: 'var(--gold-l)', letterSpacing: '1px' }}>
+                  Naturalidade &bull; Harmonia &bull; Qualidade
+                </p>
+
+                <p style={{ fontSize: '11px', color: 'var(--cream)', opacity: 0.9, lineHeight: '1.2' }}>
                   {activePostCaption}
                 </p>
-                <div style={{ background: 'var(--gold)', color: 'var(--deep)', padding: '5px', borderRadius: '12px', fontSize: '9px', fontWeight: '600' }}>
+
+                <div 
+                  style={{ 
+                    background: 'linear-gradient(135deg, var(--gold-l), var(--gold) 55%, var(--gold-d))', 
+                    color: 'var(--deep)', 
+                    padding: '8px 24px', 
+                    borderRadius: '999px', 
+                    fontSize: '11px', 
+                    fontWeight: '600',
+                    boxShadow: '0 4px 15px rgba(200, 168, 107, 0.3)',
+                    marginTop: '2px'
+                  }}
+                >
                   {activeCta}
                 </div>
+
+                <p style={{ fontSize: '9px', color: 'var(--gold)', opacity: 0.7, marginTop: '2px' }}>
+                  {BRAND.name} &bull; {BRAND.cro}
+                </p>
               </div>
+
             </div>
 
-            <button className="btn" onClick={handleOpenPreview} style={{ width: '100%', marginTop: '4px' }}>
-              🔍 Pré-visualizar & Baixar Imagem UHD
+            <button className="btn" onClick={handleGeneratePost} style={{ width: '100%', marginTop: '6px' }}>
+              🔍 Gerar Arte Final em Resolução UHD
             </button>
           </div>
         </div>
@@ -517,11 +439,11 @@ export default function Home() {
         }}>
           <div style={{
             background: 'var(--navy)', border: '1px solid var(--gold)', borderRadius: '16px',
-            maxWidth: '460px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '16px',
-            display: 'grid', gap: '12px', justifyItems: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.8)'
+            maxWidth: '460px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '18px',
+            display: 'grid', gap: '14px', justifyItems: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.8)'
           }}>
             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontFamily: 'var(--serif)', fontSize: '17px', color: 'var(--gold-l)' }}>
+              <h3 style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: 'var(--gold-l)' }}>
                 Arte Final em Alta Definição (UHD)
               </h3>
               <button onClick={() => setPreviewModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--gold)', fontSize: '18px', cursor: 'pointer' }}>
@@ -529,8 +451,8 @@ export default function Home() {
               </button>
             </div>
 
-            {renderedImageDataUrl && (
-              <img src={renderedImageDataUrl} alt="Render" style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid var(--gold-d)' }} />
+            {generatedImageUrl && (
+              <img src={generatedImageUrl} alt="Render Manus UHD" style={{ width: '100%', height: 'auto', borderRadius: '10px', border: '1px solid var(--gold-d)' }} />
             )}
 
             <div style={{ width: '100%', display: 'grid', gap: '8px' }}>
@@ -538,7 +460,7 @@ export default function Home() {
                 ⬇️ Baixar Imagem UHD (.PNG)
               </button>
               <button className="btn ghost" onClick={() => setPreviewModalOpen(false)} style={{ width: '100%', padding: '8px' }}>
-                Voltar e Editar
+                Voltar e Ajustar
               </button>
             </div>
           </div>
