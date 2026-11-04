@@ -135,7 +135,33 @@ export default function Home() {
     }
   };
 
-  // Motor Canvas UHD corrigido para espelhar perfeitamente o preview da 2ª imagem
+  // Função auxiliar para desenhar a imagem sem distorcer (proporção idêntica ao object-fit: cover)
+  const drawCoverImage = (ctx, img, x, y, w, h) => {
+    const imgRatio = img.width / img.height;
+    const targetRatio = w / h;
+    let renderW, renderH, offsetX, offsetY;
+
+    if (imgRatio > targetRatio) {
+      renderH = h;
+      renderW = h * imgRatio;
+      offsetX = x - (renderW - w) / 2;
+      offsetY = y;
+    } else {
+      renderW = w;
+      renderH = w / imgRatio;
+      offsetX = x;
+      offsetY = y - (renderH - h) / 2;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.drawImage(img, offsetX, offsetY, renderW, renderH);
+    ctx.restore();
+  };
+
+  // Motor Canvas UHD com proporção e encaixe de imagem corrigidos
   const handleGenerateAndOpenDownload = () => {
     setIsRendering(true);
     const canvas = canvasRef.current;
@@ -146,11 +172,11 @@ export default function Home() {
     canvas.width = w;
     canvas.height = h;
 
-    // 1. Fundo Deep Navy exato
+    // Fundo Deep Navy
     ctx.fillStyle = '#040a17';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Moldura Dourada Externa idêntica ao preview (arredondada)
+    // Moldura Externa com cantos arredondados padronizados
     ctx.strokeStyle = '#c8a86b';
     ctx.lineWidth = Math.max(8, Math.round(w * 0.008));
     
@@ -158,30 +184,30 @@ export default function Home() {
     const frameY = 35;
     const frameW = w - 70;
     const frameH = h - 70;
-    const frameRadius = 40;
+    const frameRadius = 36;
 
     ctx.beginPath();
     ctx.roundRect(frameX, frameY, frameW, frameH, frameRadius);
     ctx.stroke();
 
     const centerX = w / 2;
-    let currentY = 115;
 
-    // 3. Nome do Doutor
+    // 1. TOPO: Nome do Doutor
+    let currentY = 110;
     ctx.fillStyle = '#f3ece0';
-    ctx.font = `600 ${Math.round(w * 0.033)}px Jost, sans-serif`;
+    ctx.font = `600 ${Math.round(w * 0.034)}px Jost, sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(`Dr. ${BRAND.name}`, centerX, currentY);
 
     // Categoria
     currentY += 45;
     ctx.fillStyle = '#c8a86b';
-    ctx.font = `500 ${Math.round(w * 0.022)}px Jost, sans-serif`;
+    ctx.font = `500 ${Math.round(w * 0.023)}px Jost, sans-serif`;
     ctx.letterSpacing = '3px';
     ctx.fillText(customCategory.toUpperCase(), centerX, currentY);
 
     // Linha divisória
-    currentY += 25;
+    currentY += 22;
     ctx.strokeStyle = '#9c7f46';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -190,20 +216,19 @@ export default function Home() {
     ctx.stroke();
 
     // Título Principal
-    currentY += 55;
+    currentY += 52;
     ctx.fillStyle = '#f3ece0';
     ctx.font = `500 ${Math.round(w * 0.048)}px "Cormorant Garamond", serif`;
     ctx.fillText(`“${customTopCaption}”`, centerX, currentY);
 
-    // 4. Caixa Central de Fotos (Com cantos arredondados harmônicos iguais ao preview)
-    const boxX = 65;
-    const boxY = currentY + 35;
-    const boxW = w - 130;
-    const boxH = Math.round(h * 0.48);
-    const boxRadius = 24;
+    // 2. CAIXA CENTRAL DE FOTOS
+    const boxX = 60;
+    const boxY = currentY + 30;
+    const boxW = w - 120;
+    const boxH = Math.round(h * 0.46);
+    const boxRadius = 20;
 
     const drawImagesAndFinish = () => {
-      // Borda e fundo da caixa com cantos arredondados perfeitos
       ctx.save();
       ctx.beginPath();
       ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
@@ -218,16 +243,16 @@ export default function Home() {
           img1.crossOrigin = 'anonymous';
           img1.src = selectedImages[0].url;
           img1.onload = () => {
-            ctx.drawImage(img1, boxX, boxY, boxW, halfH);
+            drawCoverImage(ctx, img1, boxX, boxY, boxW, halfH);
             
             let img2 = new Image();
             img2.crossOrigin = 'anonymous';
             img2.src = selectedImages[1].url;
             img2.onload = () => {
-              ctx.drawImage(img2, boxX, boxY + halfH, boxW, halfH);
+              drawCoverImage(ctx, img2, boxX, boxY + halfH, boxW, halfH);
               ctx.restore();
 
-              // Linha divisória do Antes e Depois
+              // Linha divisória interna do Antes/Depois
               ctx.strokeStyle = '#c8a86b';
               ctx.lineWidth = 2;
               ctx.beginPath();
@@ -240,24 +265,24 @@ export default function Home() {
               ctx.strokeStyle = '#c8a86b';
               ctx.lineWidth = 1.5;
               ctx.beginPath();
-              ctx.roundRect(boxX + 15, boxY + 15, 95, 34, 6);
+              ctx.roundRect(boxX + 15, boxY + 15, 90, 32, 5);
               ctx.fill();
               ctx.stroke();
               ctx.fillStyle = '#e6cf9d';
-              ctx.font = `600 ${Math.round(w * 0.018)}px Jost, sans-serif`;
+              ctx.font = `600 ${Math.round(w * 0.017)}px Jost, sans-serif`;
               ctx.textAlign = 'center';
-              ctx.fillText('ANTES', boxX + 62.5, boxY + 36);
+              ctx.fillText('ANTES', boxX + 60, boxY + 35);
 
               // Selo DEPOIS
               ctx.fillStyle = '#040a17';
               ctx.strokeStyle = '#c8a86b';
               ctx.lineWidth = 1.5;
               ctx.beginPath();
-              ctx.roundRect(boxX + 15, boxY + halfH + 15, 95, 34, 6);
+              ctx.roundRect(boxX + 15, boxY + halfH + 15, 90, 32, 5);
               ctx.fill();
               ctx.stroke();
               ctx.fillStyle = '#e6cf9d';
-              ctx.fillText('DEPOIS', boxX + 62.5, boxY + halfH + 36);
+              ctx.fillText('DEPOIS', boxX + 60, boxY + halfH + 35);
 
               renderFooter();
             };
@@ -269,7 +294,7 @@ export default function Home() {
           img.crossOrigin = 'anonymous';
           img.src = selectedImages[0].url;
           img.onload = () => {
-            ctx.drawImage(img, boxX, boxY, boxW, boxH);
+            drawCoverImage(ctx, img, boxX, boxY, boxW, boxH);
             ctx.restore();
             renderFooter();
           };
@@ -282,15 +307,15 @@ export default function Home() {
     };
 
     const renderFooter = () => {
-      // Contorno dourado final da caixa de fotos
+      // Contorno da caixa de fotos
       ctx.strokeStyle = '#c8a86b';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
       ctx.stroke();
 
-      // 5. Rodapé (Valores, Legenda, Botão CTA, CRO)
-      let footerY = boxY + boxH + 45;
+      // 3. RODAPÉ
+      let footerY = boxY + boxH + 40;
 
       // Valores / Qualidades
       ctx.fillStyle = '#e6cf9d';
@@ -299,7 +324,7 @@ export default function Home() {
       ctx.fillText(customValuesLine, centerX, footerY);
 
       // Legenda Descritiva
-      footerY += 45;
+      footerY += 40;
       ctx.fillStyle = '#f3ece0';
       ctx.font = `300 ${Math.round(w * 0.026)}px Jost, sans-serif`;
 
@@ -321,18 +346,18 @@ export default function Home() {
       lines.push(line);
 
       lines.forEach((l, idx) => {
-        ctx.fillText(l.trim(), centerX, footerY + (idx * 34));
+        ctx.fillText(l.trim(), centerX, footerY + (idx * 32));
       });
 
       // Botão CTA Dourado Pill
-      const btnW = Math.round(w * 0.58);
-      const btnH = 68;
+      const btnW = Math.round(w * 0.56);
+      const btnH = 65;
       const btnX = (w - btnW) / 2;
-      const btnY = footerY + (lines.length * 34) + 20;
+      const btnY = footerY + (lines.length * 32) + 18;
 
       ctx.fillStyle = '#c8a86b';
       ctx.beginPath();
-      ctx.roundRect(btnX, btnY, btnW, btnH, 34);
+      ctx.roundRect(btnX, btnY, btnW, btnH, 32);
       ctx.fill();
 
       ctx.fillStyle = '#040a17';
@@ -344,7 +369,7 @@ export default function Home() {
       // CRO Rodapé
       ctx.fillStyle = '#c8a86b';
       ctx.font = `400 ${Math.round(w * 0.021)}px Jost, sans-serif`;
-      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 38);
+      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 35);
 
       const dataUrl = canvas.toDataURL('image/png');
       setRenderedImageUrl(dataUrl);
