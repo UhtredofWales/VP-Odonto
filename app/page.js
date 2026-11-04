@@ -9,19 +9,37 @@ export default function Home() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [useBeforeAfter, setUseBeforeAfter] = useState(true);
 
-  // Navegação de índices do catálogo
+  // Índices para navegação de todas as seções
+  const [categoryIndex, setCategoryIndex] = useState(0);
   const [topCaptionIndex, setTopCaptionIndex] = useState(0);
+  const [valuesIndex, setValuesIndex] = useState(0);
   const [postCaptionIndex, setPostCaptionIndex] = useState(0);
 
-  // Campos Totalmente Editáveis (Incluindo os apontados pelas setas)
+  // Listas de opções extras para Categoria e Valores
+  const categoryOptions = [
+    currentCaseObjCategories => currentCaseObj.categoryTitle,
+    () => "EXCELÊNCIA EM ODONTOLOGIA",
+    () => "ESTÉTICA E FUNCIONALIDADE",
+    () => "TRANSFORMAÇÃO DE SORRISOS"
+  ];
+
+  const valuesOptions = [
+    () => "Naturalidade · Harmonia · Qualidade",
+    () => "Precisão · Tecnologia · Conforto",
+    () => "Segurança · Estética · Durabilidade",
+    () => "Arte · Ciência · Sofisticação"
+  ];
+
   const currentCaseObj = DENTAL_CASES.find(c => c.id === selectedCase) || DENTAL_CASES[0];
+
+  // Campos Totalmente Editáveis
   const [customCategory, setCustomCategory] = useState(currentCaseObj.categoryTitle);
   const [customTopCaption, setCustomTopCaption] = useState(currentCaseObj.topCaptions[0]);
-  const [customValuesLine, setCustomValuesLine] = useState("Naturalidade · Harmonia · Qualidade"); // Seta inferior
+  const [customValuesLine, setCustomValuesLine] = useState("Naturalidade · Harmonia · Qualidade");
   const [customPostCaption, setCustomPostCaption] = useState(currentCaseObj.postCaptions[0]);
   const [customCta, setCustomCta] = useState("Agende sua avaliação");
 
-  // Contexto para a IA
+  // Contexto para a IA Especializada
   const [patientContext, setPatientContext] = useState('');
   const [procedureHighlights, setProcedureHighlights] = useState('');
 
@@ -36,32 +54,64 @@ export default function Home() {
   const handleCaseChange = (e) => {
     const newCaseId = e.target.value;
     setSelectedCase(newCaseId);
+    setCategoryIndex(0);
     setTopCaptionIndex(0);
+    setValuesIndex(0);
     setPostCaptionIndex(0);
+    
     const newObj = DENTAL_CASES.find(c => c.id === newCaseId);
     setCustomCategory(newObj.categoryTitle);
     setCustomTopCaption(newObj.topCaptions[0]);
+    setCustomValuesLine("Naturalidade · Harmonia · Qualidade");
     setCustomPostCaption(newObj.postCaptions[0]);
   };
 
+  // Funções de Navegação (Voltar / Próxima) para Categoria
+  const prevCategory = () => {
+    const cats = [currentCaseObj.categoryTitle, "EXCELÊNCIA EM ODONTOLOGIA", "ESTÉTICA E FUNCIONALIDADE", "TRANSFORMAÇÃO DE SORRISOS"];
+    const nextIdx = categoryIndex === 0 ? cats.length - 1 : categoryIndex - 1;
+    setCategoryIndex(nextIdx);
+    setCustomCategory(cats[nextIdx]);
+  };
+  const nextCategory = () => {
+    const cats = [currentCaseObj.categoryTitle, "EXCELÊNCIA EM ODONTOLOGIA", "ESTÉTICA E FUNCIONALIDADE", "TRANSFORMAÇÃO DE SORRISOS"];
+    const nextIdx = categoryIndex === cats.length - 1 ? 0 : categoryIndex + 1;
+    setCategoryIndex(nextIdx);
+    setCustomCategory(cats[nextIdx]);
+  };
+
+  // Navegação Título Principal
   const prevTopCaption = () => {
     const nextIdx = topCaptionIndex === 0 ? currentCaseObj.topCaptions.length - 1 : topCaptionIndex - 1;
     setTopCaptionIndex(nextIdx);
     setCustomTopCaption(currentCaseObj.topCaptions[nextIdx]);
   };
-
   const nextTopCaption = () => {
     const nextIdx = topCaptionIndex === currentCaseObj.topCaptions.length - 1 ? 0 : topCaptionIndex + 1;
     setTopCaptionIndex(nextIdx);
     setCustomTopCaption(currentCaseObj.topCaptions[nextIdx]);
   };
 
+  // Navegação Valores / Qualidades
+  const prevValues = () => {
+    const vals = ["Naturalidade · Harmonia · Qualidade", "Precisão · Tecnologia · Conforto", "Segurança · Estética · Durabilidade", "Arte · Ciência · Sofisticação"];
+    const nextIdx = valuesIndex === 0 ? vals.length - 1 : valuesIndex - 1;
+    setValuesIndex(nextIdx);
+    setCustomValuesLine(vals[nextIdx]);
+  };
+  const nextValues = () => {
+    const vals = ["Naturalidade · Harmonia · Qualidade", "Precisão · Tecnologia · Conforto", "Segurança · Estética · Durabilidade", "Arte · Ciência · Sofisticação"];
+    const nextIdx = valuesIndex === vals.length - 1 ? 0 : valuesIndex + 1;
+    setValuesIndex(nextIdx);
+    setCustomValuesLine(vals[nextIdx]);
+  };
+
+  // Navegação Legenda Descritiva
   const prevPostCaption = () => {
     const nextIdx = postCaptionIndex === 0 ? currentCaseObj.postCaptions.length - 1 : postCaptionIndex - 1;
     setPostCaptionIndex(nextIdx);
     setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
-
   const nextPostCaption = () => {
     const nextIdx = postCaptionIndex === currentCaseObj.postCaptions.length - 1 ? 0 : postCaptionIndex + 1;
     setPostCaptionIndex(nextIdx);
@@ -83,17 +133,26 @@ export default function Home() {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Gerador Inteligente por IA baseado no contexto inserido
   const handleAIGenerateText = () => {
+    if (!patientContext.trim() && !procedureHighlights.trim()) {
+      alert('Por favor, preencha ao menos um campo de contexto para a IA gerar de acordo!');
+      return;
+    }
+
     const refinedTop = patientContext.trim() 
       ? `Transformação estética focada em ${patientContext.trim()}.` 
       : `Excelência e precisão em ${currentCaseObj.label.toLowerCase()}.`;
 
     const refinedPost = procedureHighlights.trim() 
-      ? `${procedureHighlights.trim()}. Devolva a harmonia e a jovialidade ao seu sorriso.` 
+      ? `${procedureHighlights.trim()}. Devolva a harmonia e a jovialidade ao seu sorriso com segurança e planejamento digital.` 
       : `Planejamento reabilitador personalizado para garantir naturalidade e estética impecável.`;
 
     setCustomTopCaption(refinedTop);
     setCustomPostCaption(refinedPost);
+    if (patientContext.trim()) {
+      setCustomCategory(patientContext.toUpperCase());
+    }
   };
 
   // Motor Canvas UHD para Download Direto e Perfeito
@@ -107,31 +166,25 @@ export default function Home() {
     canvas.width = w;
     canvas.height = h;
 
-    // 1. Fundo Deep Navy
     ctx.fillStyle = '#040a17';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Moldura Dourada Externa
     ctx.strokeStyle = '#c8a86b';
     ctx.lineWidth = Math.max(8, Math.round(w * 0.007));
     ctx.strokeRect(30, 30, w - 60, h - 60);
 
-    // Configurações de escala baseadas na largura
     const centerX = w / 2;
 
-    // 3. Cabeçalho (Nome + Categoria + Título)
     ctx.fillStyle = '#f3ece0';
     ctx.font = `600 ${Math.round(w * 0.032)}px Jost, sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(`Dr. ${BRAND.name}`, centerX, 110);
 
-    // Categoria apontada pela seta superior
     ctx.fillStyle = '#c8a86b';
     ctx.font = `500 ${Math.round(w * 0.024)}px Jost, sans-serif`;
     ctx.letterSpacing = '3px';
     ctx.fillText(customCategory.toUpperCase(), centerX, 155);
 
-    // Linha divisória
     ctx.strokeStyle = '#9c7f46';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -139,12 +192,10 @@ export default function Home() {
     ctx.lineTo(centerX + 60, 185);
     ctx.stroke();
 
-    // Título Principal
     ctx.fillStyle = '#f3ece0';
     ctx.font = `500 ${Math.round(w * 0.046)}px "Cormorant Garamond", serif`;
     ctx.fillText(`“${customTopCaption}”`, centerX, 245);
 
-    // 4. Caixa Central de Imagens
     const boxX = 60;
     const boxY = 290;
     const boxW = w - 120;
@@ -157,21 +208,17 @@ export default function Home() {
     ctx.strokeRect(boxX, boxY, boxW, boxH);
 
     const finishRendering = () => {
-      // 5. Rodapé (Valores, Legenda, CTA, Credenciais)
       const footerY = boxY + boxH + 40;
 
-      // Valores apontados pela seta inferior
       ctx.fillStyle = '#e6cf9d';
       ctx.font = `400 ${Math.round(w * 0.026)}px Jost, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(customValuesLine, centerX, footerY);
 
-      // Legenda Descritiva
       ctx.fillStyle = '#f3ece0';
       ctx.font = `300 ${Math.round(w * 0.027)}px Jost, sans-serif`;
       ctx.fillText(customPostCaption, centerX, footerY + 50, boxW);
 
-      // Botão CTA Dourado
       const btnW = Math.round(w * 0.55);
       const btnH = 65;
       const btnX = (w - btnW) / 2;
@@ -188,12 +235,10 @@ export default function Home() {
       ctx.fillText(customCta, centerX, btnY + btnH / 2);
       ctx.textBaseline = 'alphabetic';
 
-      // CRO Rodapé
       ctx.fillStyle = '#c8a86b';
       ctx.font = `400 ${Math.round(w * 0.022)}px Jost, sans-serif`;
       ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 45);
 
-      // Gerar URL da Imagem Pronta
       const dataUrl = canvas.toDataURL('image/png');
       setRenderedImageUrl(dataUrl);
       setIsRendering(false);
@@ -208,7 +253,6 @@ export default function Home() {
         img1.src = selectedImages[0].url;
         img1.onload = () => {
           ctx.drawImage(img1, boxX, boxY, boxW, halfH);
-          // Selo Antes
           ctx.fillStyle = '#040a17';
           ctx.strokeStyle = '#c8a86b';
           ctx.lineWidth = 2;
@@ -223,7 +267,6 @@ export default function Home() {
           img2.src = selectedImages[1].url;
           img2.onload = () => {
             ctx.drawImage(img2, boxX, boxY + halfH, boxW, halfH);
-            // Selo Depois
             ctx.fillStyle = '#040a17';
             ctx.strokeStyle = '#c8a86b';
             ctx.lineWidth = 2;
@@ -301,7 +344,7 @@ export default function Home() {
             </select>
           </label>
 
-          {/* IA ESPECIALIZADA */}
+          {/* IA ESPECIALIZADA COM CONTEXTO */}
           <div style={{ borderTop: '1px solid var(--gold-d)', paddingTop: '10px', display: 'grid', gap: '8px' }}>
             <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--gold)' }}>
               🧠 IA Especialista em Odontologia Estética:
@@ -333,21 +376,27 @@ export default function Home() {
               onClick={handleAIGenerateText}
               style={{ width: '100%', borderColor: 'var(--gold)', color: 'var(--gold-l)', marginTop: '4px' }}
             >
-              ✨ Gerar Textos Especializados com IA
+              ✨ Gerar Textos Inteligentes com Base no Contexto
             </button>
           </div>
 
-          {/* CATEGORIA EDITÁVEL (Apontada pela Seta Superior) */}
-          <label>
-            Subtítulo / Categoria (Seta Superior)
+          {/* SUBTÍTULO / CATEGORIA (Com setas de navegação) */}
+          <div>
+            <div className="nav-header" style={{ marginBottom: '4px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Subtítulo / Categoria (Superior)</span>
+              <div className="row" style={{ gap: '4px' }}>
+                <button type="button" className="btn ghost" onClick={prevCategory}>&lsaquo; Voltar</button>
+                <button type="button" className="btn ghost" onClick={nextCategory}>Próxima &rsaquo;</button>
+              </div>
+            </div>
             <input 
               type="text" 
               value={customCategory}
               onChange={(e) => setCustomCategory(e.target.value)}
             />
-          </label>
+          </div>
 
-          {/* TÍTULO EDITÁVEL + NAVEGAÇÃO */}
+          {/* TÍTULO PRINCIPAL (Com setas de navegação) */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Frase Título Principal</span>
@@ -363,18 +412,23 @@ export default function Home() {
             />
           </div>
 
-          {/* LINHA DE VALORES EDITÁVEL (Apontada pela Seta Inferior) */}
-          <label>
-            Valores / Qualidades (Seta Inferior)
+          {/* VALORES / QUALIDADES (Com setas de navegação) */}
+          <div>
+            <div className="nav-header" style={{ marginBottom: '4px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Valores / Qualidades (Inferior)</span>
+              <div className="row" style={{ gap: '4px' }}>
+                <button type="button" className="btn ghost" onClick={prevValues}>&lsaquo; Voltar</button>
+                <button type="button" className="btn ghost" onClick={nextValues}>Próxima &rsaquo;</button>
+              </div>
+            </div>
             <input 
               type="text" 
               value={customValuesLine}
               onChange={(e) => setCustomValuesLine(e.target.value)}
-              placeholder="Ex: Naturalidade · Harmonia · Qualidade"
             />
-          </label>
+          </div>
 
-          {/* LEGENDA EDITÁVEL + NAVEGAÇÃO */}
+          {/* LEGENDA DESCRITIVA (Com setas de navegação) */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Texto / Legenda Descritiva</span>
@@ -483,7 +537,7 @@ export default function Home() {
               }}
             >
               
-              {/* TOPO: LOGO + NOME + CATEGORIA (Editável) + TÍTULO */}
+              {/* TOPO: LOGO + NOME + CATEGORIA + TÍTULO */}
               <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <img src="/logo-gold.png" alt="Logo" style={{ height: '24px', width: 'auto' }} />
@@ -501,7 +555,7 @@ export default function Home() {
                 </h2>
               </div>
 
-              {/* MOLDURA CENTRAL COM TAMANHOS DE FOTO IDÊNTICOS E SIMÉTRICOS */}
+              {/* MOLDURA CENTRAL COM TAMANHOS DE FOTO IDÊNTICOS */}
               <div 
                 style={{ 
                   width: '100%', 
@@ -540,7 +594,7 @@ export default function Home() {
                 )}
               </div>
 
-              {/* RODAPÉ: VALORES (Editável) + LEGENDA + BOTÃO */}
+              {/* RODAPÉ */}
               <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 <p style={{ fontSize: '11px', color: '#e6cf9d', letterSpacing: '1.5px' }}>
                   {customValuesLine}
@@ -579,7 +633,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* MODAL DE DOWNLOAD COM A IMAGEM PRONTA EM UHD */}
+      {/* MODAL DE DOWNLOAD */}
       {previewModalOpen && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(4, 10, 23, 0.95)', backdropFilter: 'blur(8px)',
