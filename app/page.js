@@ -135,7 +135,6 @@ export default function Home() {
     }
   };
 
-  // Função auxiliar para desenhar a imagem sem distorcer (proporção idêntica ao object-fit: cover)
   const drawCoverImage = (ctx, img, x, y, w, h) => {
     const imgRatio = img.width / img.height;
     const targetRatio = w / h;
@@ -161,7 +160,7 @@ export default function Home() {
     ctx.restore();
   };
 
-  // Motor Canvas UHD com proporção e encaixe de imagem corrigidos
+  // Motor Canvas UHD com distribuição vertical proporcional correta (sem espaço vazio embaixo no Story)
   const handleGenerateAndOpenDownload = () => {
     setIsRendering(true);
     const canvas = canvasRef.current;
@@ -193,21 +192,21 @@ export default function Home() {
     const centerX = w / 2;
 
     // 1. TOPO: Nome do Doutor
-    let currentY = 110;
+    let currentY = Math.round(h * 0.08);
     ctx.fillStyle = '#f3ece0';
     ctx.font = `600 ${Math.round(w * 0.034)}px Jost, sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(`Dr. ${BRAND.name}`, centerX, currentY);
 
     // Categoria
-    currentY += 45;
+    currentY += Math.round(h * 0.045);
     ctx.fillStyle = '#c8a86b';
     ctx.font = `500 ${Math.round(w * 0.023)}px Jost, sans-serif`;
     ctx.letterSpacing = '3px';
     ctx.fillText(customCategory.toUpperCase(), centerX, currentY);
 
     // Linha divisória
-    currentY += 22;
+    currentY += Math.round(h * 0.022);
     ctx.strokeStyle = '#9c7f46';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -216,16 +215,16 @@ export default function Home() {
     ctx.stroke();
 
     // Título Principal
-    currentY += 52;
+    currentY += Math.round(h * 0.055);
     ctx.fillStyle = '#f3ece0';
     ctx.font = `500 ${Math.round(w * 0.048)}px "Cormorant Garamond", serif`;
     ctx.fillText(`“${customTopCaption}”`, centerX, currentY);
 
-    // 2. CAIXA CENTRAL DE FOTOS
+    // 2. CAIXA CENTRAL DE FOTOS (Proporcional ao formato)
     const boxX = 60;
-    const boxY = currentY + 30;
+    const boxY = currentY + Math.round(h * 0.03);
     const boxW = w - 120;
-    const boxH = Math.round(h * 0.46);
+    const boxH = Math.round(h * 0.44);
     const boxRadius = 20;
 
     const drawImagesAndFinish = () => {
@@ -314,8 +313,8 @@ export default function Home() {
       ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
       ctx.stroke();
 
-      // 3. RODAPÉ
-      let footerY = boxY + boxH + 40;
+      // 3. RODAPÉ (Distribuição fluida preenchendo perfeitamente até o limite inferior)
+      let footerY = boxY + boxH + Math.round(h * 0.04);
 
       // Valores / Qualidades
       ctx.fillStyle = '#e6cf9d';
@@ -324,7 +323,7 @@ export default function Home() {
       ctx.fillText(customValuesLine, centerX, footerY);
 
       // Legenda Descritiva
-      footerY += 40;
+      footerY += Math.round(h * 0.045);
       ctx.fillStyle = '#f3ece0';
       ctx.font = `300 ${Math.round(w * 0.026)}px Jost, sans-serif`;
 
@@ -346,14 +345,14 @@ export default function Home() {
       lines.push(line);
 
       lines.forEach((l, idx) => {
-        ctx.fillText(l.trim(), centerX, footerY + (idx * 32));
+        ctx.fillText(l.trim(), centerX, footerY + (idx * Math.round(h * 0.035)));
       });
 
       // Botão CTA Dourado Pill
       const btnW = Math.round(w * 0.56);
-      const btnH = 65;
+      const btnH = Math.round(h * 0.075);
       const btnX = (w - btnW) / 2;
-      const btnY = footerY + (lines.length * 32) + 18;
+      const btnY = footerY + (lines.length * Math.round(h * 0.035)) + Math.round(h * 0.02);
 
       ctx.fillStyle = '#c8a86b';
       ctx.beginPath();
@@ -369,7 +368,7 @@ export default function Home() {
       // CRO Rodapé
       ctx.fillStyle = '#c8a86b';
       ctx.font = `400 ${Math.round(w * 0.021)}px Jost, sans-serif`;
-      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 35);
+      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, frameY + frameH - Math.round(h * 0.03));
 
       const dataUrl = canvas.toDataURL('image/png');
       setRenderedImageUrl(dataUrl);
