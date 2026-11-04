@@ -135,7 +135,7 @@ export default function Home() {
     }
   };
 
-  // Motor Canvas UHD corrigido para espelhar perfeitamente o preview visual
+  // Motor Canvas UHD atualizado para espelhar perfeitamente o preview da interface
   const handleGenerateAndOpenDownload = () => {
     setIsRendering(true);
     const canvas = canvasRef.current;
@@ -150,26 +150,33 @@ export default function Home() {
     ctx.fillStyle = '#040a17';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Moldura Dourada Externa
+    // 2. Moldura Dourada Externa com cantos arredondados idênticos ao preview
     ctx.strokeStyle = '#c8a86b';
-    ctx.lineWidth = Math.max(10, Math.round(w * 0.012));
-    ctx.strokeRect(35, 35, w - 70, h - 70);
+    ctx.lineWidth = Math.max(8, Math.round(w * 0.008));
+    
+    const frameX = 35;
+    const frameY = 35;
+    const frameW = w - 70;
+    const frameH = h - 70;
+    const radius = 32;
+
+    ctx.beginPath();
+    ctx.roundRect(frameX, frameY, frameW, frameH, radius);
+    ctx.stroke();
 
     const centerX = w / 2;
+    let currentY = 115;
 
-    // 3. Bloco do Topo (Logo simulada, Nome, Categoria, Título)
-    let currentY = 120;
-
-    // Nome do Doutor
+    // 3. Nome do Doutor
     ctx.fillStyle = '#f3ece0';
-    ctx.font = `600 ${Math.round(w * 0.035)}px Jost, sans-serif`;
+    ctx.font = `600 ${Math.round(w * 0.033)}px Jost, sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(`Dr. ${BRAND.name}`, centerX, currentY);
 
     // Categoria
-    currentY += 50;
+    currentY += 45;
     ctx.fillStyle = '#c8a86b';
-    ctx.font = `500 ${Math.round(w * 0.024)}px Jost, sans-serif`;
+    ctx.font = `500 ${Math.round(w * 0.022)}px Jost, sans-serif`;
     ctx.letterSpacing = '3px';
     ctx.fillText(customCategory.toUpperCase(), centerX, currentY);
 
@@ -178,45 +185,55 @@ export default function Home() {
     ctx.strokeStyle = '#9c7f46';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(centerX - 50, currentY);
-    ctx.lineTo(centerX + 50, currentY);
+    ctx.moveTo(centerX - 45, currentY);
+    ctx.lineTo(centerX + 45, currentY);
     ctx.stroke();
 
     // Título Principal
-    currentY += 60;
+    currentY += 55;
     ctx.fillStyle = '#f3ece0';
-    ctx.font = `500 ${Math.round(w * 0.052)}px "Cormorant Garamond", serif`;
+    ctx.font = `500 ${Math.round(w * 0.048)}px "Cormorant Garamond", serif`;
     ctx.fillText(`“${customTopCaption}”`, centerX, currentY);
 
-    // 4. Área Central de Fotos (Antes e Depois Simétrico)
+    // 4. Caixa Central de Fotos (Com cantos arredondados idênticos ao preview)
     const boxX = 65;
-    const boxY = currentY + 40;
+    const boxY = currentY + 35;
     const boxW = w - 130;
-    // Altura proporcional exata baseada no formato escolhido
-    const boxH = Math.round(h * 0.46);
+    const boxH = Math.round(h * 0.48);
+    const boxRadius = 24;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
+    ctx.clip();
 
     ctx.fillStyle = '#071328';
-    ctx.strokeStyle = '#c8a86b';
-    ctx.lineWidth = 3;
     ctx.fillRect(boxX, boxY, boxW, boxH);
-    ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-    const finishRendering = () => {
+    const renderImagesAndFinish = () => {
+      ctx.restore(); // Restaura o contexto após o recorte com cantos arredondados
+
+      // Contorno dourado da caixa de fotos
+      ctx.strokeStyle = '#c8a86b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
+      ctx.stroke();
+
       // 5. Bloco do Rodapé (Valores, Legenda, Botão CTA, CRO)
-      let footerY = boxY + boxH + 60;
+      let footerY = boxY + boxH + 45;
 
       // Valores / Qualidades
       ctx.fillStyle = '#e6cf9d';
-      ctx.font = `400 ${Math.round(w * 0.027)}px Jost, sans-serif`;
+      ctx.font = `400 ${Math.round(w * 0.025)}px Jost, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(customValuesLine, centerX, footerY);
 
       // Legenda Descritiva
-      footerY += 55;
+      footerY += 45;
       ctx.fillStyle = '#f3ece0';
-      ctx.font = `300 ${Math.round(w * 0.029)}px Jost, sans-serif`;
-      
-      // Quebra de texto automática simples para a legenda não estourar as bordas
+      ctx.font = `300 ${Math.round(w * 0.026)}px Jost, sans-serif`;
+
       const maxTextWidth = boxW;
       const words = customPostCaption.split(' ');
       let line = '';
@@ -235,30 +252,30 @@ export default function Home() {
       lines.push(line);
 
       lines.forEach((l, idx) => {
-        ctx.fillText(l.trim(), centerX, footerY + (idx * 38));
+        ctx.fillText(l.trim(), centerX, footerY + (idx * 34));
       });
 
-      // Botão CTA Pill Dourado
-      const btnW = Math.round(w * 0.6);
-      const btnH = 75;
+      // Botão CTA Dourado Pill
+      const btnW = Math.round(w * 0.58);
+      const btnH = 68;
       const btnX = (w - btnW) / 2;
-      const btnY = footerY + (lines.length * 38) + 30;
+      const btnY = footerY + (lines.length * 34) + 20;
 
       ctx.fillStyle = '#c8a86b';
       ctx.beginPath();
-      ctx.roundRect(btnX, btnY, btnW, btnH, 38);
+      ctx.roundRect(btnX, btnY, btnW, btnH, 34);
       ctx.fill();
 
       ctx.fillStyle = '#040a17';
-      ctx.font = `600 ${Math.round(w * 0.032)}px Jost, sans-serif`;
+      ctx.font = `600 ${Math.round(w * 0.03)}px Jost, sans-serif`;
       ctx.textBaseline = 'middle';
       ctx.fillText(customCta, centerX, btnY + btnH / 2);
       ctx.textBaseline = 'alphabetic';
 
       // CRO Rodapé
       ctx.fillStyle = '#c8a86b';
-      ctx.font = `400 ${Math.round(w * 0.023)}px Jost, sans-serif`;
-      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 50);
+      ctx.font = `400 ${Math.round(w * 0.021)}px Jost, sans-serif`;
+      ctx.fillText(`${BRAND.name} • ${BRAND.cro}`, centerX, btnY + btnH + 38);
 
       const dataUrl = canvas.toDataURL('image/png');
       setRenderedImageUrl(dataUrl);
@@ -279,11 +296,14 @@ export default function Home() {
           ctx.fillStyle = '#040a17';
           ctx.strokeStyle = '#c8a86b';
           ctx.lineWidth = 2;
-          ctx.fillRect(boxX + 15, boxY + 15, 110, 40);
-          ctx.strokeRect(boxX + 15, boxY + 15, 110, 40);
+          ctx.beginPath();
+          ctx.roundRect(boxX + 15, boxY + 15, 100, 36, 6);
+          ctx.fill();
+          ctx.stroke();
           ctx.fillStyle = '#e6cf9d';
-          ctx.font = `600 ${Math.round(w * 0.02)}px Jost, sans-serif`;
-          ctx.fillText('ANTES', boxX + 70, boxY + 41);
+          ctx.font = `600 ${Math.round(w * 0.018)}px Jost, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText('ANTES', boxX + 65, boxY + 38);
 
           let img2 = new Image();
           img2.crossOrigin = 'anonymous';
@@ -295,28 +315,30 @@ export default function Home() {
             ctx.fillStyle = '#040a17';
             ctx.strokeStyle = '#c8a86b';
             ctx.lineWidth = 2;
-            ctx.fillRect(boxX + 15, boxY + halfH + 15, 110, 40);
-            ctx.strokeRect(boxX + 15, boxY + halfH + 15, 110, 40);
+            ctx.beginPath();
+            ctx.roundRect(boxX + 15, boxY + halfH + 15, 100, 36, 6);
+            ctx.fill();
+            ctx.stroke();
             ctx.fillStyle = '#e6cf9d';
-            ctx.fillText('DEPOIS', boxX + 70, boxY + halfH + 41);
+            ctx.fillText('DEPOIS', boxX + 65, boxY + halfH + 38);
 
-            finishRendering();
+            renderImagesAndFinish();
           };
-          img2.onerror = finishRendering;
+          img2.onerror = renderImagesAndFinish;
         };
-        img1.onerror = finishRendering;
+        img1.onerror = renderImagesAndFinish;
       } else {
         let img = new Image();
         img.crossOrigin = 'anonymous';
         img.src = selectedImages[0].url;
         img.onload = () => {
           ctx.drawImage(img, boxX, boxY, boxW, boxH);
-          finishRendering();
+          renderImagesAndFinish();
         };
-        img.onerror = finishRendering;
+        img.onerror = renderImagesAndFinish;
       }
     } else {
-      finishRendering();
+      renderImagesAndFinish();
     }
   };
 
