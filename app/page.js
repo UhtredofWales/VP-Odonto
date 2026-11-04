@@ -9,7 +9,6 @@ export default function Home() {
   const [selectedImages, setSelectedImages] = useState([]);
   const [useBeforeAfter, setUseBeforeAfter] = useState(true);
 
-  // Índices para navegação de todas as seções
   const [categoryIndex, setCategoryIndex] = useState(0);
   const [topCaptionIndex, setTopCaptionIndex] = useState(0);
   const [valuesIndex, setValuesIndex] = useState(0);
@@ -17,18 +16,15 @@ export default function Home() {
 
   const currentCaseObj = DENTAL_CASES.find(c => c.id === selectedCase) || DENTAL_CASES[0];
 
-  // Campos Totalmente Editáveis
   const [customCategory, setCustomCategory] = useState(currentCaseObj.categoryTitle);
   const [customTopCaption, setCustomTopCaption] = useState(currentCaseObj.topCaptions[0]);
   const [customValuesLine, setCustomValuesLine] = useState("Naturalidade · Harmonia · Qualidade");
   const [customPostCaption, setCustomPostCaption] = useState(currentCaseObj.postCaptions[0]);
   const [customCta, setCustomCta] = useState("Agende sua avaliação");
 
-  // Contexto para a IA Especializada
   const [patientContext, setPatientContext] = useState('');
   const [procedureHighlights, setProcedureHighlights] = useState('');
 
-  // Estados de Renderização e Download
   const [isRendering, setIsRendering] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [renderedImageUrl, setRenderedImageUrl] = useState(null);
@@ -100,30 +96,18 @@ export default function Home() {
     setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
 
-  // Leitura assíncrona robusta compatível com iOS / Safari
-  const handleImageChange = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+  // Método ultra-compatível com iPhone e Safari Mobile usando ObjectURL nativo
+  const handleImageChange = (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    try {
-      const loadedImages = await Promise.all(
-        files.map(file => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (evt) => resolve({ url: evt.target.result });
-            reader.onerror = (err) => reject(err);
-            reader.readAsDataURL(file);
-          });
-        })
-      );
+    const newImages = Array.from(files).map(file => ({
+      url: URL.createObjectURL(file),
+      name: file.name
+    }));
 
-      setSelectedImages(prev => [...prev, ...loadedImages]);
-    } catch (err) {
-      console.error("Erro ao carregar no iOS:", err);
-      alert("Erro ao ler imagem no dispositivo. Tente novamente.");
-    } finally {
-      if (e.target) e.target.value = '';
-    }
+    setSelectedImages(prev => [...prev, ...newImages]);
+    e.target.value = null;
   };
 
   const removeImage = (index) => {
@@ -151,7 +135,6 @@ export default function Home() {
     }
   };
 
-  // Motor Canvas UHD para Download Direto e Perfeito
   const handleGenerateAndOpenDownload = () => {
     setIsRendering(true);
     const canvas = canvasRef.current;
@@ -312,7 +295,6 @@ export default function Home() {
       </header>
 
       <div className="grid">
-        {/* PAINEL DE CONTROLES */}
         <div className="panel">
           
           <label>
@@ -340,7 +322,6 @@ export default function Home() {
             </select>
           </label>
 
-          {/* IA ESPECIALIZADA COM CONTEXTO */}
           <div style={{ borderTop: '1px solid var(--gold-d)', paddingTop: '10px', display: 'grid', gap: '8px' }}>
             <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--gold)' }}>
               🧠 IA Especialista em Odontologia Estética:
@@ -376,7 +357,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* SUBTÍTULO / CATEGORIA */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Subtítulo / Categoria (Superior)</span>
@@ -392,7 +372,6 @@ export default function Home() {
             />
           </div>
 
-          {/* TÍTULO PRINCIPAL */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Frase Título Principal</span>
@@ -408,7 +387,6 @@ export default function Home() {
             />
           </div>
 
-          {/* VALORES / QUALIDADES */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Valores / Qualidades (Inferior)</span>
@@ -424,7 +402,6 @@ export default function Home() {
             />
           </div>
 
-          {/* LEGENDA DESCRITIVA */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
               <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Texto / Legenda Descritiva</span>
@@ -462,21 +439,21 @@ export default function Home() {
             </label>
           </div>
 
-          {/* UPLOAD COMPATÍVEL COM IPHONE */}
+          {/* INPUT NATIVO OTIMIZADO PARA IPHONE / SAFARI */}
           <label>
             Fotos do Caso Clínico
             <div className="drop" onClick={() => fileInputRef.current && fileInputRef.current.click()}>
               {selectedImages.length > 0 ? (
                 <span>{selectedImages.length} foto(s) anexada(s). Toque para adicionar mais.</span>
               ) : (
-                <span>Toque aqui para selecionar as fotos do iPhone (Fototeca ou Câmera)</span>
+                <span>Toque aqui para selecionar fotos da Fototeca ou Câmera (iPhone)</span>
               )}
             </div>
             <input 
               ref={fileInputRef}
               type="file" 
               multiple 
-              accept="image/*,image/heic,image/heif" 
+              accept="image/*" 
               onChange={handleImageChange}
               style={{ display: 'none' }}
             />
@@ -498,14 +475,12 @@ export default function Home() {
             </div>
           )}
 
-          {/* BOTÃO DE GERAR E BAIXAR */}
           <button className="btn" onClick={handleGenerateAndOpenDownload} disabled={isRendering}>
             {isRendering ? 'Processando Imagem UHD...' : '⚡ Gerar & Baixar Imagem UHD'}
           </button>
 
         </div>
 
-        {/* PREVIEW EM TEMPO REAL */}
         <div className="stage">
           <div className="preview-card" style={{ width: '100%', maxWidth: '440px' }}>
             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -534,7 +509,6 @@ export default function Home() {
               }}
             >
               
-              {/* TOPO: LOGO + NOME + CATEGORIA + TÍTULO */}
               <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <img src="/logo-gold.png" alt="Logo" style={{ height: '24px', width: 'auto' }} />
@@ -552,7 +526,6 @@ export default function Home() {
                 </h2>
               </div>
 
-              {/* MOLDURA CENTRAL COM TAMANHOS DE FOTO IDÊNTICOS */}
               <div 
                 style={{ 
                   width: '100%', 
@@ -591,7 +564,6 @@ export default function Home() {
                 )}
               </div>
 
-              {/* RODAPÉ */}
               <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 <p style={{ fontSize: '11px', color: '#e6cf9d', letterSpacing: '1.5px' }}>
                   {customValuesLine}
@@ -630,7 +602,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* MODAL DE DOWNLOAD */}
       {previewModalOpen && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(4, 10, 23, 0.95)', backdropFilter: 'blur(8px)',
