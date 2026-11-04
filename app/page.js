@@ -53,120 +53,154 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        
-        {/* Cabeçalho */}
-        <header className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Central de Posts · Odontologia</h1>
-            <p className="text-sm text-slate-500">{BRAND.name} — {BRAND.cro}</p>
-          </div>
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-sky-50 text-sky-700">
-            Modo IA Ativo
-          </span>
-        </header>
+    <div className="wrap">
+      {/* Header */}
+      <header>
+        <div>
+          <h1>Central de Posts &middot; Odontologia</h1>
+          <p>{BRAND.name} &bull; {BRAND.cro} &bull; {BRAND.especialist}</p>
+        </div>
+      </header>
 
-        {/* Painel Principal de Configuração */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
+      {/* Grid Principal */}
+      <div className="grid">
+        
+        {/* Painel de Controles */}
+        <div className="panel">
           
-          {/* Seletor de Casos Clínicos */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Selecione o Caso Clínico / Procedimento:
-            </label>
+          {/* Seletor de Caso Clínico */}
+          <label>
+            Selecione o Caso Clínico / Procedimento
             <select 
               value={selectedCase} 
               onChange={(e) => setSelectedCase(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition"
+              style={{
+                width: '100%',
+                background: 'var(--deep)',
+                color: 'var(--cream)',
+                border: '1px solid var(--gold-d)',
+                borderRadius: '10px',
+                padding: '12px 14px',
+                font: 'inherit',
+                fontSize: '15px'
+              }}
             >
               {DENTAL_CASES.map(item => (
                 <option key={item.id} value={item.id}>{item.label}</option>
               ))}
             </select>
-          </div>
+          </label>
 
           {/* Legenda Superior Dinâmica */}
-          <div className="bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-100 rounded-xl p-4">
-            <span className="text-xs font-bold text-sky-600 uppercase tracking-wider block mb-1">
-              Legenda Superior Dinâmica (Automática):
+          <div className="note">
+            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '.1em', display: 'block', marginBottom: '4px', color: 'var(--gold)' }}>
+              Legenda Superior Dinâmica:
             </span>
-            <p className="text-base font-bold text-sky-900">
-              "{currentCaseObj.topCaption}"
-            </p>
+            <strong style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: 'var(--cream)' }}>
+              &ldquo;{currentCaseObj.topCaption}&rdquo;
+            </strong>
           </div>
 
-          {/* Upload de Múltiplas Fotos com Enquadramento Inteligente */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Fotos do Caso (Selecione uma ou mais fotos):
-            </label>
+          {/* Área de Upload de Múltiplas Fotos */}
+          <label>
+            Fotos do Caso (Múltiplas Imagens com Enquadramento Inteligente)
+            <div className="drop" onClick={() => document.getElementById('fileInput').click()}>
+              {selectedImages.length > 0 ? (
+                <span>{selectedImages.length} foto(s) selecionada(s). Clique para adicionar mais.</span>
+              ) : (
+                <span>Clique aqui para carregar as fotos do caso clínico</span>
+              )}
+            </div>
             <input 
+              id="fileInput"
               type="file" 
               multiple 
               accept="image/*" 
               onChange={handleImageChange}
-              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer border border-dashed border-slate-300 rounded-xl p-4 bg-slate-50/50"
+              style={{ display: 'none' }}
             />
-            
-            {selectedImages.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-                {selectedImages.map((img, index) => (
-                  <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 shadow-sm group">
-                    <img src={img.url} alt={`Preview ${index}`} className="object-cover w-full h-full" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                      <button 
-                        onClick={() => removeImage(index)}
-                        className="bg-red-500 text-white rounded-full p-1.5 text-xs font-bold hover:bg-red-600 shadow"
-                        title="Remover foto"
-                      >
-                        ✕ Remover
-                      </button>
-                    </div>
-                    <span className="absolute bottom-1.5 left-1.5 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">
-                      ✨ IA Enquadrada
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          </label>
 
-          {/* Observações Opcionais */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">
-              Observações Adicionais para a IA (Opcional):
-            </label>
+          {/* Prévia das Imagens Selecionadas */}
+          {selectedImages.length > 0 && (
+            <div className="row">
+              {selectedImages.map((img, index) => (
+                <div key={index} style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--gold-d)' }}>
+                  <img src={img.url} alt={`Preview ${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button 
+                    onClick={() => removeImage(index)}
+                    style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px', cursor: 'pointer' }}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Notas Adicionais */}
+          <label>
+            Observações Adicionais para a IA
             <textarea 
               rows="3"
               value={customNotes}
               onChange={(e) => setCustomNotes(e.target.value)}
-              placeholder="Ex: Destacar o uso de materiais importados, tempo de tratamento, etc."
-              className="w-full border border-slate-200 rounded-xl p-3 text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition text-sm"
+              placeholder="Ex: Destacar o conforto, tecnologia 3D, etc."
             />
-          </div>
+          </label>
 
           {/* Botão de Ação */}
           <button 
+            className="btn"
             onClick={handleGenerate}
             disabled={loading}
-            className="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3.5 rounded-xl transition shadow-md shadow-sky-600/20 disabled:opacity-50 cursor-pointer"
           >
-            {loading ? 'Processando Enquadramento Inteligente...' : 'Gerar Post Completo'}
+            {loading ? 'Processando IA e Enquadramento...' : 'Gerar Post Completo'}
           </button>
 
-          {/* Feedback de Sucesso */}
+          {/* Mensagem de Erro ou Sucesso */}
           {generatedResult && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-emerald-900 space-y-1">
-              <p className="font-semibold text-sm">✅ Sucesso!</p>
-              <p className="text-xs text-emerald-700">{generatedResult.message}</p>
-              <p className="text-xs text-emerald-600">Total de fotos processadas: {generatedResult.totalImagens}</p>
+            <div className="note" style={{ borderColor: 'var(--gold-l)' }}>
+              <p style={{ fontWeight: '500', color: 'var(--gold-l)' }}>Sucesso!</p>
+              <p style={{ fontSize: '13px' }}>{generatedResult.message} ({generatedResult.totalImagens} imagens processadas)</p>
             </div>
           )}
 
         </div>
 
+        {/* Painel de Preview / Stage */}
+        <div className="stage">
+          <div className="out">
+            <div className="panel" style={{ textAlign: 'center', background: 'var(--deep)', borderStyle: 'dashed' }}>
+              <p style={{ fontSize: '13px', color: 'var(--gold-l)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                Preview do Post em Tempo Real
+              </p>
+              
+              <div style={{ background: 'var(--navy)', borderRadius: '12px', padding: '16px', border: '1px solid var(--gold-d)', textAlign: 'left', display: 'grid', gap: '12px' }}>
+                <div style={{ textAlign: 'center', borderBottom: '1px solid var(--gold-d)', paddingBottom: '10px' }}>
+                  <span style={{ fontFamily: 'var(--serif)', fontSize: '16px', color: 'var(--gold-l)' }}>
+                    {currentCaseObj.topCaption}
+                  </span>
+                </div>
+
+                <div style={{ aspectRatio: '1/1', background: '#000', borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {selectedImages.length > 0 ? (
+                    <img src={selectedImages[0].url} alt="Post preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: '12px', color: 'var(--gold-d)' }}>A imagem enquadrada aparecerá aqui</span>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '12px', color: 'var(--cream)', lineHeight: '1.4' }}>
+                  <p style={{ fontWeight: '500', color: 'var(--gold)' }}>{BRAND.name} &bull; {BRAND.cro}</p>
+                  <p style={{ marginTop: '4px', opacity: 0.8 }}>Transformando sorrisos com excelência. Agende sua avaliação.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
-    </main>
+    </div>
   );
 }
