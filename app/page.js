@@ -95,7 +95,6 @@ export default function Home() {
     setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
 
-  // Leitura segura por Base64 otimizada especificamente para evitar falhas no iOS/Safari
   const handleImageChange = (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -103,12 +102,7 @@ export default function Home() {
     Array.from(files).forEach(file => {
       const reader = new FileReader();
       reader.onload = (uploadEvent) => {
-        const base64Result = uploadEvent.target.result;
-        setSelectedImages(prev => [...prev, { url: base64Result, name: file.name }]);
-      };
-      reader.onerror = (err) => {
-        console.error("Erro no FileReader:", err);
-        alert("Erro ao carregar a imagem no iOS. Tente selecionar outra foto.");
+        setSelectedImages(prev => [...prev, { url: uploadEvent.target.result, name: file.name }]);
       };
       reader.readAsDataURL(file);
     });
@@ -282,10 +276,33 @@ export default function Home() {
 
   const handleDownload = () => {
     if (!renderedImageUrl) return;
-    const link = document.createElement('a');
-    link.download = `post-${selectedCase}-${selectedFormat}-UHD.png`;
-    link.href = renderedImageUrl;
-    link.click();
+    
+    // Detecção se é dispositivo móvel Apple (iPhone / iPad)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS) {
+      // No iPhone, abre a imagem em uma nova aba limpa para o usuário pressionar e salvar nas fotos
+      const newTab = window.open();
+      if (newTab) {
+        newTab.document.write(`
+          <html>
+            <head><title>Salvar Imagem - Dr. Vitor H. Parra</title></head>
+            <body style="background:#040a17;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#f3ece0;font-family:sans-serif;text-align:center;padding:20px;">
+              <p style="font-size:16px;margin-bottom:15px;color:#c8a86b;font-weight:600;">Pressione a imagem abaixo por 2 segundos e escolha "Salvar nas Fotos"</p>
+              <img src="${renderedImageUrl}" style="max-width:100%;max-height:75vh;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.8);" />
+            </body>
+          </html>
+        `);
+      } else {
+        window.location.href = renderedImageUrl;
+      }
+    } else {
+      // Download direto padrão para PC / Android
+      const link = document.createElement('a');
+      link.download = `post-${selectedCase}-${selectedFormat}-UHD.png`;
+      link.href = renderedImageUrl;
+      link.click();
+    }
   };
 
   return (
@@ -445,7 +462,6 @@ export default function Home() {
             </label>
           </div>
 
-          {/* INPUT NATIVO ESTILO OVERLAY TRANSPARENTE 100% COMPATÍVEL COM O SAFARI NO IPHONE */}
           <label style={{ display: 'grid', gap: '5px', fontSize: '13px', color: 'var(--gold-l)' }}>
             Fotos do Caso Clínico
             <div className="drop" style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '10px' }}>
@@ -621,21 +637,21 @@ export default function Home() {
           zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
         }}>
           <div style={{
-            background: 'var(--navy)', border: '1px solid var(--gold)', borderRadius: '16px',
+            background: 'var(--navy)', border: '1px solid #c8a86b', borderRadius: '16px',
             maxWidth: '460px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '18px',
             display: 'grid', gap: '14px', justifyItems: 'center', boxShadow: '0 25px 50px rgba(0,0,0,0.8)'
           }}>
             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: 'var(--gold-l)' }}>
+              <h3 style={{ fontFamily: 'var(--serif)', fontSize: '18px', color: '#e6cf9d' }}>
                 Arte Pronta em Alta Definição (UHD)
               </h3>
-              <button onClick={() => setPreviewModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--gold)', fontSize: '18px', cursor: 'pointer' }}>
+              <button onClick={() => setPreviewModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#c8a86b', fontSize: '18px', cursor: 'pointer' }}>
                 ✕
               </button>
             </div>
 
             {renderedImageUrl && (
-              <img src={renderedImageUrl} alt="Render UHD" style={{ width: '100%', height: 'auto', borderRadius: '10px', border: '1px solid var(--gold-d)' }} />
+              <img src={renderedImageUrl} alt="Render UHD" style={{ width: '100%', height: 'auto', borderRadius: '10px', border: '1px solid #9c7f46' }} />
             )}
 
             <div style={{ width: '100%', display: 'grid', gap: '8px' }}>
