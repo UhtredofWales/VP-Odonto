@@ -5,50 +5,60 @@ import { BRAND, DENTAL_CASES, FORMAT_OPTIONS } from '../lib/brand';
 
 export default function Home() {
   const [selectedCase, setSelectedCase] = useState(DENTAL_CASES[0].id);
-  const [selectedFormat, setSelectedFormat] = useState(FORMAT_OPTIONS[2].id); // Story 9:16
+  const [selectedFormat, setSelectedFormat] = useState(FORMAT_OPTIONS[2].id); // Story 9:16 padrão
   const [selectedImages, setSelectedImages] = useState([]);
-  const [useBeforeAfter, setUseBeforeAfter] = useState(false);
+  const [useBeforeAfter, setUseBeforeAfter] = useState(true);
 
-  // Navegação de Frases
+  // Navegação de índices do catálogo
   const [topCaptionIndex, setTopCaptionIndex] = useState(0);
   const [postCaptionIndex, setPostCaptionIndex] = useState(0);
 
-  // Edição Livre
-  const [customTopCaption, setCustomTopCaption] = useState('');
-  const [customPostCaption, setCustomPostCaption] = useState('');
-  const [customCta, setCustomCta] = useState('');
+  // Campos Totalmente Editáveis
+  const currentCaseObj = DENTAL_CASES.find(c => c.id === selectedCase) || DENTAL_CASES[0];
+  const [customCategory, setCustomCategory] = useState(currentCaseObj.categoryTitle);
+  const [customTopCaption, setCustomTopCaption] = useState(currentCaseObj.topCaptions[0]);
+  const [customPostCaption, setCustomPostCaption] = useState(currentCaseObj.postCaptions[0]);
+  const [customCta, setCustomCta] = useState("Agende sua avaliação");
 
-  // Contexto IA
+  // Contexto para a IA especializada
   const [patientContext, setPatientContext] = useState('');
   const [procedureHighlights, setProcedureHighlights] = useState('');
 
-  const currentCaseObj = DENTAL_CASES.find(c => c.id === selectedCase) || DENTAL_CASES[0];
   const currentFormatObj = FORMAT_OPTIONS.find(f => f.id === selectedFormat) || FORMAT_OPTIONS[2];
 
   const handleCaseChange = (e) => {
-    setSelectedCase(e.target.value);
+    const newCaseId = e.target.value;
+    setSelectedCase(newCaseId);
     setTopCaptionIndex(0);
     setPostCaptionIndex(0);
-    setCustomTopCaption('');
-    setCustomPostCaption('');
+    const newObj = DENTAL_CASES.find(c => c.id === newCaseId);
+    setCustomCategory(newObj.categoryTitle);
+    setCustomTopCaption(newObj.topCaptions[0]);
+    setCustomPostCaption(newObj.postCaptions[0]);
   };
 
   const prevTopCaption = () => {
-    setTopCaptionIndex(prev => (prev === 0 ? currentCaseObj.topCaptions.length - 1 : prev - 1));
-    setCustomTopCaption('');
+    const nextIdx = topCaptionIndex === 0 ? currentCaseObj.topCaptions.length - 1 : topCaptionIndex - 1;
+    setTopCaptionIndex(nextIdx);
+    setCustomTopCaption(currentCaseObj.topCaptions[nextIdx]);
   };
+
   const nextTopCaption = () => {
-    setTopCaptionIndex(prev => (prev === currentCaseObj.topCaptions.length - 1 ? 0 : prev + 1));
-    setCustomTopCaption('');
+    const nextIdx = topCaptionIndex === currentCaseObj.topCaptions.length - 1 ? 0 : topCaptionIndex + 1;
+    setTopCaptionIndex(nextIdx);
+    setCustomTopCaption(currentCaseObj.topCaptions[nextIdx]);
   };
 
   const prevPostCaption = () => {
-    setPostCaptionIndex(prev => (prev === 0 ? currentCaseObj.postCaptions.length - 1 : prev - 1));
-    setCustomPostCaption('');
+    const nextIdx = postCaptionIndex === 0 ? currentCaseObj.postCaptions.length - 1 : postCaptionIndex - 1;
+    setPostCaptionIndex(nextIdx);
+    setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
+
   const nextPostCaption = () => {
-    setPostCaptionIndex(prev => (prev === currentCaseObj.postCaptions.length - 1 ? 0 : prev + 1));
-    setCustomPostCaption('');
+    const nextIdx = postCaptionIndex === currentCaseObj.postCaptions.length - 1 ? 0 : postCaptionIndex + 1;
+    setPostCaptionIndex(nextIdx);
+    setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
 
   const handleImageChange = (e) => {
@@ -66,13 +76,18 @@ export default function Home() {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const activeTopCaption = customTopCaption.trim() || currentCaseObj.topCaptions[topCaptionIndex];
-  const activePostCaption = customPostCaption.trim() || currentCaseObj.postCaptions[postCaptionIndex];
-  const activeCta = customCta.trim() || "Agende sua avaliação";
-
+  // IA Especializada Odontológica
   const handleAIGenerateText = () => {
-    setCustomTopCaption(`Volte a sorrir com ${patientContext.trim() || "confiança"}.`);
-    setCustomPostCaption(procedureHighlights.trim() ? `${procedureHighlights.trim()}. Naturalidade e precisão.` : "Naturalidade · Harmonia · Qualidade");
+    const refinedTop = patientContext.trim() 
+      ? `Transformação estética focada em ${patientContext.trim()}.` 
+      : `Excelência e precisão em ${currentCaseObj.label.toLowerCase()}.`;
+
+    const refinedPost = procedureHighlights.trim() 
+      ? `${procedureHighlights.trim()}. Devolva a harmonia e a jovialidade ao seu sorriso com segurança e planejamento digital.` 
+      : `Planejamento reabilitador personalizado para garantir naturalidade, função e estética impecável.`;
+
+    setCustomTopCaption(refinedTop);
+    setCustomPostCaption(refinedPost);
   };
 
   return (
@@ -114,29 +129,29 @@ export default function Home() {
             </select>
           </label>
 
-          {/* PERGUNTAS DA IA */}
+          {/* IA ESPECIALIZADA */}
           <div style={{ borderTop: '1px solid var(--gold-d)', paddingTop: '10px', display: 'grid', gap: '8px' }}>
             <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--gold)' }}>
-              🤖 Instruções do Caso para a IA:
+              🧠 IA Especialista em Odontologia Estética:
             </span>
 
             <label>
-              1. Qual o perfil do paciente ou objetivo do caso?
+              1. Qual o perfil ou objetivo do caso?
               <input 
                 type="text" 
                 value={patientContext} 
                 onChange={(e) => setPatientContext(e.target.value)}
-                placeholder="Ex: Confiança, estética natural..." 
+                placeholder="Ex: reabilitação estética, dentes desalinhados..." 
               />
             </label>
 
             <label>
-              2. Ponto principal a destacar no procedimento?
+              2. Detalhes técnicos ou diferenciais?
               <input 
                 type="text" 
                 value={procedureHighlights} 
                 onChange={(e) => setProcedureHighlights(e.target.value)}
-                placeholder="Ex: Sem dor, agilidade..." 
+                placeholder="Ex: fluxo digital, mínima desgaseificação..." 
               />
             </label>
 
@@ -146,14 +161,24 @@ export default function Home() {
               onClick={handleAIGenerateText}
               style={{ width: '100%', borderColor: 'var(--gold)', color: 'var(--gold-l)', marginTop: '4px' }}
             >
-              ✨ Processar Textos com a IA
+              ✨ Gerar Textos Especializados com IA
             </button>
           </div>
 
-          {/* TÍTULO */}
+          {/* CATEGORIA EDITÁVEL */}
+          <label>
+            Subtítulo / Categoria (Ex: LENTES DE CONTATO)
+            <input 
+              type="text" 
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value)}
+            />
+          </label>
+
+          {/* TÍTULO EDITÁVEL + NAVEGAÇÃO */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Frase Título (Superior)</span>
+              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Frase Título Principal</span>
               <div className="row" style={{ gap: '4px' }}>
                 <button type="button" className="btn ghost" onClick={prevTopCaption}>&lsaquo; Voltar</button>
                 <button type="button" className="btn ghost" onClick={nextTopCaption}>Próxima &rsaquo;</button>
@@ -161,16 +186,15 @@ export default function Home() {
             </div>
             <input 
               type="text" 
-              value={activeTopCaption}
+              value={customTopCaption}
               onChange={(e) => setCustomTopCaption(e.target.value)}
-              placeholder="Digite o título ou use as setas..."
             />
           </div>
 
-          {/* LEGENDA */}
+          {/* LEGENDA EDITÁVEL + NAVEGAÇÃO */}
           <div>
             <div className="nav-header" style={{ marginBottom: '4px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Legenda / Destaques</span>
+              <span style={{ fontSize: '13px', color: 'var(--gold-l)' }}>Texto / Legenda Descritiva</span>
               <div className="row" style={{ gap: '4px' }}>
                 <button type="button" className="btn ghost" onClick={prevPostCaption}>&lsaquo; Voltar</button>
                 <button type="button" className="btn ghost" onClick={nextPostCaption}>Próxima &rsaquo;</button>
@@ -178,9 +202,8 @@ export default function Home() {
             </div>
             <textarea 
               rows="2"
-              value={activePostCaption}
+              value={customPostCaption}
               onChange={(e) => setCustomPostCaption(e.target.value)}
-              placeholder="Digite a legenda ou use as setas..."
             />
           </div>
 
@@ -188,9 +211,8 @@ export default function Home() {
             Texto do Botão (CTA)
             <input 
               type="text" 
-              value={activeCta}
+              value={customCta}
               onChange={(e) => setCustomCta(e.target.value)}
-              placeholder="Ex: Agende sua avaliação"
             />
           </label>
 
@@ -203,7 +225,7 @@ export default function Home() {
               style={{ width: '15px', height: '15px', accentColor: 'var(--gold)' }}
             />
             <label htmlFor="beforeAfterCheck" style={{ cursor: 'pointer', margin: 0 }}>
-              Ativar modo "Antes e Depois" (requer 2 fotos)
+              Ativar modo "Antes e Depois" (Padrão simétrico em 2 fotos)
             </label>
           </div>
 
@@ -211,7 +233,7 @@ export default function Home() {
             Fotos do Caso Clínico
             <div className="drop" onClick={() => document.getElementById('fileInput').click()}>
               {selectedImages.length > 0 ? (
-                <span>{selectedImages.length} foto(s) anexada(s). Clique para adicionar.</span>
+                <span>{selectedImages.length} foto(s) anexada(s). Clique para gerenciar.</span>
               ) : (
                 <span>Clique aqui para selecionar as fotos em alta definição</span>
               )}
@@ -244,7 +266,7 @@ export default function Home() {
 
         </div>
 
-        {/* PREVIEW EM TEMPO REAL LIMPO E ELEGANTE */}
+        {/* PREVIEW EM TEMPO REAL COM TAMANHO PADRÃO SIMÉTRICO */}
         <div className="stage">
           <div className="preview-card" style={{ width: '100%', maxWidth: '440px' }}>
             <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -256,7 +278,7 @@ export default function Home() {
               </span>
             </div>
 
-            {/* ARTE FINAL EXATAMENTE IGUAL AO EXEMPLO */}
+            {/* ARTE FINAL COM TAMANHOS DE FOTO PADRONIZADOS */}
             <div 
               style={{ 
                 width: '100%',
@@ -278,21 +300,21 @@ export default function Home() {
               <div style={{ width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <img src="/logo-gold.png" alt="Logo" style={{ height: '24px', width: 'auto' }} />
-                  <span style={{ fontSize: '15px', fontWeight: '600', color: '#f3ece0', fontFamily: 'var(--sans)' }}>Dr. {BRAND.name}</span>
+                  <span style={{ fontSize: '15px', fontWeight: '600', color: '#f3ece0' }}>Dr. {BRAND.name}</span>
                 </div>
 
                 <span style={{ fontSize: '10px', color: '#c8a86b', letterSpacing: '2.5px', textTransform: 'uppercase', marginTop: '2px' }}>
-                  {currentCaseObj.categoryTitle}
+                  {customCategory}
                 </span>
 
                 <div style={{ width: '50px', height: '1px', background: '#9c7f46', margin: '6px 0' }} />
 
                 <h2 style={{ fontFamily: 'var(--serif)', fontSize: '22px', color: '#f3ece0', fontWeight: '500', lineHeight: '1.25', margin: '4px 0' }}>
-                  &ldquo;{activeTopCaption}&rdquo;
+                  &ldquo;{customTopCaption}&rdquo;
                 </h2>
               </div>
 
-              {/* MOLDURA CENTRAL DA FOTO */}
+              {/* MOLDURA CENTRAL COM TAMANHOS DE FOTO IGUAIS E SIMÉTRICOS */}
               <div 
                 style={{ 
                   width: '100%', 
@@ -310,21 +332,37 @@ export default function Home() {
                 {selectedImages.length > 0 ? (
                   useBeforeAfter && selectedImages.length >= 2 ? (
                     <>
-                      <div style={{ flex: 1, position: 'relative', borderBottom: '1px solid #c8a86b' }}>
-                        <img src={selectedImages[0].url} alt="Antes" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {/* Foto ANTES com tamanho exato de 50% */}
+                      <div style={{ height: '50%', width: '100%', position: 'relative', borderBottom: '1px solid #c8a86b', overflow: 'hidden' }}>
+                        <img 
+                          src={selectedImages[0].url} 
+                          alt="Antes" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
+                        />
                         <span style={{ position: 'absolute', top: '10px', left: '10px', background: '#040a17', border: '1px solid #c8a86b', color: '#e6cf9d', fontSize: '9px', padding: '3px 9px', fontWeight: 'bold', borderRadius: '3px' }}>ANTES</span>
                       </div>
-                      <div style={{ flex: 1, position: 'relative' }}>
-                        <img src={selectedImages[1].url} alt="Depois" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {/* Foto DEPOIS com tamanho exato de 50% */}
+                      <div style={{ height: '50%', width: '100%', position: 'relative', overflow: 'hidden' }}>
+                        <img 
+                          src={selectedImages[1].url} 
+                          alt="Depois" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
+                        />
                         <span style={{ position: 'absolute', top: '10px', left: '10px', background: '#040a17', border: '1px solid #c8a86b', color: '#e6cf9d', fontSize: '9px', padding: '3px 9px', fontWeight: 'bold', borderRadius: '3px' }}>DEPOIS</span>
                       </div>
                     </>
                   ) : (
-                    <img src={selectedImages[0].url} alt="Caso" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+                      <img 
+                        src={selectedImages[0].url} 
+                        alt="Caso" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }} 
+                      />
+                    </div>
                   )
                 ) : (
                   <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: '#9c7f46', fontSize: '12px', textAlign: 'center', padding: '20px' }}>
-                    Anexe as fotos para visualizar o enquadramento na moldura
+                    Anexe as fotos para visualizar o enquadramento simétrico
                   </div>
                 )}
               </div>
@@ -336,34 +374,9 @@ export default function Home() {
                 </p>
 
                 <p style={{ fontSize: '11px', color: '#f3ece0', opacity: 0.9, lineHeight: '1.3' }}>
-                  {activePostCaption}
+                  {customPostCaption}
                 </p>
 
                 <div 
                   style={{ 
-                    background: 'linear-gradient(135deg, #e6cf9d, #c8a86b 55%, #9c7f46)', 
-                    color: '#040a17', 
-                    padding: '10px 28px', 
-                    borderRadius: '999px', 
-                    fontSize: '12px', 
-                    fontWeight: '600',
-                    boxShadow: '0 4px 15px rgba(200, 168, 107, 0.4)',
-                    marginTop: '4px'
-                  }}
-                >
-                  {activeCta}
-                </div>
-
-                <p style={{ fontSize: '10px', color: '#c8a86b', opacity: 0.8, marginTop: '2px' }}>
-                  {BRAND.name} &bull; {BRAND.cro}
-                </p>
-              </div>
-
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+                    background: 'linear-gradient(135deg, #e6cf9d, #c8a
