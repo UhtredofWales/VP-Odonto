@@ -135,7 +135,7 @@ export default function Home() {
     }
   };
 
-  // Motor Canvas UHD atualizado para espelhar perfeitamente o preview da interface
+  // Motor Canvas UHD corrigido para espelhar perfeitamente o preview da 2ª imagem
   const handleGenerateAndOpenDownload = () => {
     setIsRendering(true);
     const canvas = canvasRef.current;
@@ -150,7 +150,7 @@ export default function Home() {
     ctx.fillStyle = '#040a17';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Moldura Dourada Externa com cantos arredondados idênticos ao preview
+    // 2. Moldura Dourada Externa idêntica ao preview (arredondada)
     ctx.strokeStyle = '#c8a86b';
     ctx.lineWidth = Math.max(8, Math.round(w * 0.008));
     
@@ -158,10 +158,10 @@ export default function Home() {
     const frameY = 35;
     const frameW = w - 70;
     const frameH = h - 70;
-    const radius = 32;
+    const frameRadius = 40;
 
     ctx.beginPath();
-    ctx.roundRect(frameX, frameY, frameW, frameH, radius);
+    ctx.roundRect(frameX, frameY, frameW, frameH, frameRadius);
     ctx.stroke();
 
     const centerX = w / 2;
@@ -195,32 +195,101 @@ export default function Home() {
     ctx.font = `500 ${Math.round(w * 0.048)}px "Cormorant Garamond", serif`;
     ctx.fillText(`“${customTopCaption}”`, centerX, currentY);
 
-    // 4. Caixa Central de Fotos (Com cantos arredondados idênticos ao preview)
+    // 4. Caixa Central de Fotos (Com cantos arredondados harmônicos iguais ao preview)
     const boxX = 65;
     const boxY = currentY + 35;
     const boxW = w - 130;
     const boxH = Math.round(h * 0.48);
     const boxRadius = 24;
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
-    ctx.clip();
+    const drawImagesAndFinish = () => {
+      // Borda e fundo da caixa com cantos arredondados perfeitos
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
+      ctx.clip();
+      ctx.fillStyle = '#071328';
+      ctx.fillRect(boxX, boxY, boxW, boxH);
 
-    ctx.fillStyle = '#071328';
-    ctx.fillRect(boxX, boxY, boxW, boxH);
+      if (selectedImages.length > 0) {
+        if (useBeforeAfter && selectedImages.length >= 2) {
+          const halfH = boxH / 2;
+          let img1 = new Image();
+          img1.crossOrigin = 'anonymous';
+          img1.src = selectedImages[0].url;
+          img1.onload = () => {
+            ctx.drawImage(img1, boxX, boxY, boxW, halfH);
+            
+            let img2 = new Image();
+            img2.crossOrigin = 'anonymous';
+            img2.src = selectedImages[1].url;
+            img2.onload = () => {
+              ctx.drawImage(img2, boxX, boxY + halfH, boxW, halfH);
+              ctx.restore();
 
-    const renderImagesAndFinish = () => {
-      ctx.restore(); // Restaura o contexto após o recorte com cantos arredondados
+              // Linha divisória do Antes e Depois
+              ctx.strokeStyle = '#c8a86b';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(boxX, boxY + halfH);
+              ctx.lineTo(boxX + boxW, boxY + halfH);
+              ctx.stroke();
 
-      // Contorno dourado da caixa de fotos
+              // Selo ANTES
+              ctx.fillStyle = '#040a17';
+              ctx.strokeStyle = '#c8a86b';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.roundRect(boxX + 15, boxY + 15, 95, 34, 6);
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = '#e6cf9d';
+              ctx.font = `600 ${Math.round(w * 0.018)}px Jost, sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.fillText('ANTES', boxX + 62.5, boxY + 36);
+
+              // Selo DEPOIS
+              ctx.fillStyle = '#040a17';
+              ctx.strokeStyle = '#c8a86b';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.roundRect(boxX + 15, boxY + halfH + 15, 95, 34, 6);
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = '#e6cf9d';
+              ctx.fillText('DEPOIS', boxX + 62.5, boxY + halfH + 36);
+
+              renderFooter();
+            };
+            img2.onerror = () => { ctx.restore(); renderFooter(); };
+          };
+          img1.onerror = () => { ctx.restore(); renderFooter(); };
+        } else {
+          let img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = selectedImages[0].url;
+          img.onload = () => {
+            ctx.drawImage(img, boxX, boxY, boxW, boxH);
+            ctx.restore();
+            renderFooter();
+          };
+          img.onerror = () => { ctx.restore(); renderFooter(); };
+        }
+      } else {
+        ctx.restore();
+        renderFooter();
+      }
+    };
+
+    const renderFooter = () => {
+      // Contorno dourado final da caixa de fotos
       ctx.strokeStyle = '#c8a86b';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.roundRect(boxX, boxY, boxW, boxH, boxRadius);
       ctx.stroke();
 
-      // 5. Bloco do Rodapé (Valores, Legenda, Botão CTA, CRO)
+      // 5. Rodapé (Valores, Legenda, Botão CTA, CRO)
       let footerY = boxY + boxH + 45;
 
       // Valores / Qualidades
@@ -283,63 +352,7 @@ export default function Home() {
       setPreviewModalOpen(true);
     };
 
-    if (selectedImages.length > 0) {
-      if (useBeforeAfter && selectedImages.length >= 2) {
-        const halfH = boxH / 2;
-        let img1 = new Image();
-        img1.crossOrigin = 'anonymous';
-        img1.src = selectedImages[0].url;
-        img1.onload = () => {
-          ctx.drawImage(img1, boxX, boxY, boxW, halfH);
-          
-          // Selo ANTES
-          ctx.fillStyle = '#040a17';
-          ctx.strokeStyle = '#c8a86b';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.roundRect(boxX + 15, boxY + 15, 100, 36, 6);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#e6cf9d';
-          ctx.font = `600 ${Math.round(w * 0.018)}px Jost, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.fillText('ANTES', boxX + 65, boxY + 38);
-
-          let img2 = new Image();
-          img2.crossOrigin = 'anonymous';
-          img2.src = selectedImages[1].url;
-          img2.onload = () => {
-            ctx.drawImage(img2, boxX, boxY + halfH, boxW, halfH);
-            
-            // Selo DEPOIS
-            ctx.fillStyle = '#040a17';
-            ctx.strokeStyle = '#c8a86b';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(boxX + 15, boxY + halfH + 15, 100, 36, 6);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = '#e6cf9d';
-            ctx.fillText('DEPOIS', boxX + 65, boxY + halfH + 38);
-
-            renderImagesAndFinish();
-          };
-          img2.onerror = renderImagesAndFinish;
-        };
-        img1.onerror = renderImagesAndFinish;
-      } else {
-        let img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = selectedImages[0].url;
-        img.onload = () => {
-          ctx.drawImage(img, boxX, boxY, boxW, boxH);
-          renderImagesAndFinish();
-        };
-        img.onerror = renderImagesAndFinish;
-      }
-    } else {
-      renderImagesAndFinish();
-    }
+    drawImagesAndFinish();
   };
 
   const handleDownload = () => {
