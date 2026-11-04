@@ -5,7 +5,7 @@ import { BRAND, DENTAL_CASES, FORMAT_OPTIONS } from '../lib/brand';
 
 export default function Home() {
   const [selectedCase, setSelectedCase] = useState(DENTAL_CASES[0].id);
-  const [selectedFormat, setSelectedFormat] = useState(FORMAT_OPTIONS[2].id); // Story 9:16 padrão
+  const [selectedFormat, setSelectedFormat] = useState(FORMAT_OPTIONS[2].id);
   const [selectedImages, setSelectedImages] = useState([]);
   const [useBeforeAfter, setUseBeforeAfter] = useState(true);
 
@@ -34,6 +34,7 @@ export default function Home() {
   const [renderedImageUrl, setRenderedImageUrl] = useState(null);
   
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
   const currentFormatObj = FORMAT_OPTIONS.find(f => f.id === selectedFormat) || FORMAT_OPTIONS[2];
 
   const handleCaseChange = (e) => {
@@ -99,25 +100,30 @@ export default function Home() {
     setCustomPostCaption(currentCaseObj.postCaptions[nextIdx]);
   };
 
-  // Função otimizada para carregar imagens tanto no desktop quanto no mobile
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files || files.length === 0) return;
+  // Leitura assíncrona robusta compatível com iOS / Safari
+  const handleImageChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (uploadEvent) => {
-        setSelectedImages(prev => [...prev, { url: uploadEvent.target.result }]);
-      };
-      reader.onerror = (error) => {
-        console.error("Erro ao ler o arquivo de imagem:", error);
-        alert("Não foi possível carregar esta imagem. Tente selecionar outra.");
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    // Limpa o valor do input para permitir selecionar a mesma foto novamente se necessário
-    e.target.value = '';
+    try {
+      const loadedImages = await Promise.all(
+        files.map(file => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (evt) => resolve({ url: evt.target.result });
+            reader.onerror = (err) => reject(err);
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      setSelectedImages(prev => [...prev, ...loadedImages]);
+    } catch (err) {
+      console.error("Erro ao carregar no iOS:", err);
+      alert("Erro ao ler imagem no dispositivo. Tente novamente.");
+    } finally {
+      if (e.target) e.target.value = '';
+    }
   };
 
   const removeImage = (index) => {
@@ -456,21 +462,21 @@ export default function Home() {
             </label>
           </div>
 
-          {/* UPLOAD OTIMIZADO PARA MOBILE */}
+          {/* UPLOAD COMPATÍVEL COM IPHONE */}
           <label>
             Fotos do Caso Clínico
-            <div className="drop" onClick={() => document.getElementById('fileInput').click()}>
+            <div className="drop" onClick={() => fileInputRef.current && fileInputRef.current.click()}>
               {selectedImages.length > 0 ? (
-                <span>{selectedImages.length} foto(s) anexada(s). Clique para adicionar mais.</span>
+                <span>{selectedImages.length} foto(s) anexada(s). Toque para adicionar mais.</span>
               ) : (
-                <span>Toque aqui para selecionar as fotos da galeria ou tirar da câmera</span>
+                <span>Toque aqui para selecionar as fotos do iPhone (Fototeca ou Câmera)</span>
               )}
             </div>
             <input 
-              id="fileInput"
+              ref={fileInputRef}
               type="file" 
               multiple 
-              accept="image/*" 
+              accept="image/*,image/heic,image/heif" 
               onChange={handleImageChange}
               style={{ display: 'none' }}
             />
