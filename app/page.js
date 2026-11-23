@@ -2,8 +2,11 @@
 
 import { useState, useRef } from 'react';
 import { BRAND, DENTAL_CASES, FORMAT_OPTIONS } from '../lib/brand';
+import LogoTab from '../components/LogoTab';
 
 export default function Home() {
+  const [tab, setTab] = useState('post');
+
   const [selectedCase, setSelectedCase] = useState(DENTAL_CASES[0].id);
   const [selectedFormat, setSelectedFormat] = useState(FORMAT_OPTIONS[2].id);
   const [selectedImages, setSelectedImages] = useState([]);
@@ -440,7 +443,25 @@ export default function Home() {
         <span className="uhd-badge">MANUS IA &bull; UHD</span>
       </header>
 
-      <div className="grid">
+      {/* Abas: as duas telas continuam montadas, então nada se perde ao alternar */}
+      <div
+        className="seg"
+        role="tablist"
+        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', maxWidth: '380px', margin: '16px 0' }}
+      >
+        <button type="button" role="tab" aria-selected={tab === 'post'} aria-pressed={tab === 'post'} onClick={() => setTab('post')}>
+          Criar Post
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'logo'} aria-pressed={tab === 'logo'} onClick={() => setTab('logo')}>
+          Logo nas Imagens
+        </button>
+      </div>
+
+      <div style={tab === 'logo' ? undefined : { display: 'none' }}>
+        <LogoTab />
+      </div>
+
+      <div className="grid" style={tab === 'post' ? undefined : { display: 'none' }}>
         <div className="panel">
           
           <label>

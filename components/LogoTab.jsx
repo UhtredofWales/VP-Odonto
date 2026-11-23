@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /* ------------------------------------------------------------------ */
-/*  Aba "Logo nas imagens"                                             */
+/*  Aba "Logo nas Imagens"                                             */
 /*  Sobe fotos, aplica a logo no canto direito e baixa o resultado.    */
 /*  Tudo roda no navegador (canvas): nenhuma chamada de API/IA.        */
 /* ------------------------------------------------------------------ */
 
+const DEFAULT_LOGO = "/logo-gold.png"; // arquivo que já existe em /public
 const STORAGE_KEY = "logo-tab:logo";
 const PREVIEW_DIM = 900; // lado maior da pré-visualização
 const EXPORT_DIM = 6000; // teto do arquivo final (mantém a resolução original abaixo disso)
@@ -144,7 +145,7 @@ function composite(photo, logo, o, maxDim) {
     ctx.shadowColor = "rgba(0,0,0,0.25)";
     ctx.shadowBlur = pad * 0.9;
     ctx.shadowOffsetY = pad * 0.2;
-    ctx.fillStyle = logoIsLight ? "rgba(12,24,48,0.80)" : "rgba(255,255,255,0.88)";
+    ctx.fillStyle = logoIsLight ? "rgba(4,10,23,0.82)" : "rgba(255,255,255,0.88)";
     roundedRect(ctx, x - pad, y - pad, lw + 2 * pad, lh + 2 * pad, pad * 1.1);
     ctx.fill();
     ctx.restore();
@@ -209,10 +210,10 @@ function Result({ item, logo, opts, format, onRemove }) {
           {item.name}
         </span>
         <span className="lt-actions">
-          <button type="button" className="lt-btn lt-btn-gold" onClick={download} disabled={!logo}>
+          <button type="button" className="btn" style={{ padding: "6px 14px", fontSize: "12px" }} onClick={download} disabled={!logo}>
             Baixar
           </button>
-          <button type="button" className="lt-btn" onClick={() => onRemove(item.id)}>
+          <button type="button" className="btn ghost" onClick={() => onRemove(item.id)}>
             Remover
           </button>
         </span>
@@ -236,7 +237,6 @@ export default function LogoTab() {
   const [format, setFormat] = useState("png");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [dragging, setDragging] = useState(false);
   const urls = useRef(new Set());
 
   const applyLogo = useCallback(async (src) => {
@@ -244,7 +244,7 @@ export default function LogoTab() {
     setLogo({ img, lum: logoLuminance(img) });
   }, []);
 
-  // Carrega a logo salva no navegador; se não houver, tenta /public/logo.png
+  // Carrega a logo enviada antes; se não houver, usa /logo-gold.png
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -253,8 +253,7 @@ export default function LogoTab() {
         saved = window.localStorage.getItem(STORAGE_KEY);
       } catch {}
       try {
-        if (saved) await applyLogo(saved);
-        else await applyLogo("/logo.png");
+        await applyLogo(saved || DEFAULT_LOGO);
       } catch {
         if (alive) setLogo(null);
       }
@@ -283,11 +282,15 @@ export default function LogoTab() {
     }
   }
 
-  function clearLogo() {
-    setLogo(null);
+  async function resetLogo() {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {}
+    try {
+      await applyLogo(DEFAULT_LOGO);
+    } catch {
+      setLogo(null);
+    }
   }
 
   async function addPhotos(fileList) {
@@ -340,176 +343,176 @@ export default function LogoTab() {
     setOpts((o) => ({ ...o, [key]: e.target.type === "range" ? Number(e.target.value) : e.target.value }));
 
   return (
-    <section className="lt-root">
+    <div className="grid lt-root">
       <style>{css}</style>
 
-      <header className="lt-head">
-        <h2>Logo nas imagens</h2>
-        <p>Suba as fotos e a logo entra no canto direito, sem gerar post nem legenda.</p>
-      </header>
+      <div className="panel">
+        <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--gold)" }}>
+          Aplicar a logo no canto direito das imagens, sem gerar post:
+        </span>
 
-      <div className="lt-layout">
-        <aside className="lt-panel">
-          <div className="lt-group">
-            <span className="lt-label">Logo</span>
-            {logo ? (
-              <div className="lt-logo-box">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logo.img.src} alt="Logo atual" />
-                <div className="lt-actions">
-                  <label className="lt-btn">
-                    Trocar
-                    <input type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" hidden onChange={(e) => onLogoFile(e.target.files[0])} />
-                  </label>
-                  <button type="button" className="lt-btn" onClick={clearLogo}>
-                    Remover
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <label className="lt-btn lt-btn-gold lt-block">
-                Enviar logo (PNG com fundo transparente)
-                <input type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" hidden onChange={(e) => onLogoFile(e.target.files[0])} />
-              </label>
-            )}
-          </div>
-
-          <div className="lt-group">
-            <label className="lt-label" htmlFor="lt-pos">Posição</label>
-            <select id="lt-pos" value={opts.position} onChange={set("position")}>
-              {POSITIONS.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="lt-group">
-            <label className="lt-label" htmlFor="lt-size">
-              Tamanho <b>{opts.size}%</b>
+        <div className="lt-logo-box">
+          {logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo.img.src} alt="Logo atual" />
+          ) : (
+            <span className="lt-muted">Nenhuma logo carregada</span>
+          )}
+          <div className="lt-actions">
+            <label className="btn ghost lt-file">
+              Trocar logo
+              <input
+                type="file"
+                accept="image/png,image/svg+xml,image/webp,image/jpeg"
+                hidden
+                onChange={(e) => {
+                  onLogoFile(e.target.files[0]);
+                  e.target.value = "";
+                }}
+              />
             </label>
-            <input id="lt-size" type="range" min="8" max="35" value={opts.size} onChange={set("size")} />
+            <button type="button" className="btn ghost" onClick={resetLogo}>
+              Usar logo padrão
+            </button>
           </div>
+        </div>
 
-          <div className="lt-group">
-            <label className="lt-label" htmlFor="lt-margin">
-              Distância da borda <b>{opts.margin}%</b>
-            </label>
-            <input id="lt-margin" type="range" min="1" max="10" value={opts.margin} onChange={set("margin")} />
-          </div>
+        <label>
+          Posição
+          <select value={opts.position} onChange={set("position")}>
+            {POSITIONS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <div className="lt-group">
-            <label className="lt-label" htmlFor="lt-opacity">
-              Opacidade <b>{opts.opacity}%</b>
-            </label>
-            <input id="lt-opacity" type="range" min="50" max="100" value={opts.opacity} onChange={set("opacity")} />
-          </div>
+        <label>
+          <span>
+            Tamanho <span className="lt-val">{opts.size}%</span>
+          </span>
+          <input type="range" min="8" max="35" value={opts.size} onChange={set("size")} />
+        </label>
 
-          <div className="lt-group">
-            <label className="lt-label" htmlFor="lt-prot">Proteção de leitura</label>
-            <select id="lt-prot" value={opts.protection} onChange={set("protection")}>
-              {PROTECTIONS.map((p) => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-            <small>Automática mede o fundo atrás da logo e escolhe sozinha entre nada, sombra ou placa.</small>
-          </div>
+        <label>
+          <span>
+            Distância da borda <span className="lt-val">{opts.margin}%</span>
+          </span>
+          <input type="range" min="1" max="10" value={opts.margin} onChange={set("margin")} />
+        </label>
 
-          <div className="lt-group">
-            <label className="lt-label" htmlFor="lt-format">Formato do arquivo</label>
-            <select id="lt-format" value={format} onChange={(e) => setFormat(e.target.value)}>
-              <option value="png">PNG (sem perda)</option>
-              <option value="jpg">JPG (arquivo menor)</option>
-            </select>
-          </div>
-        </aside>
+        <label>
+          <span>
+            Opacidade <span className="lt-val">{opts.opacity}%</span>
+          </span>
+          <input type="range" min="50" max="100" value={opts.opacity} onChange={set("opacity")} />
+        </label>
 
-        <div className="lt-main">
-          <label
-            className={`lt-drop${dragging ? " is-over" : ""}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              addPhotos(e.dataTransfer.files);
+        <label>
+          Proteção de leitura
+          <select value={opts.protection} onChange={set("protection")}>
+            {PROTECTIONS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          <small className="lt-muted">
+            Automática mede o fundo atrás da logo e escolhe entre nada, sombra suave ou placa escura.
+          </small>
+        </label>
+
+        <label>
+          Formato do arquivo
+          <select value={format} onChange={(e) => setFormat(e.target.value)}>
+            <option value="png">PNG (sem perda)</option>
+            <option value="jpg">JPG (arquivo menor)</option>
+          </select>
+        </label>
+
+        <label style={{ display: "grid", gap: "5px", fontSize: "13px", color: "var(--gold-l)" }}>
+          Imagens
+          <div
+            className="drop"
+            style={{
+              cursor: "pointer",
+              position: "relative",
+              overflow: "hidden",
+              minHeight: "60px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              padding: "10px",
             }}
           >
-            <strong>Arraste as imagens aqui ou clique para escolher</strong>
-            <span>Pode enviar várias de uma vez. O arquivo final mantém a resolução original.</span>
+            {items.length > 0 ? (
+              <span>{items.length} imagem(ns) anexada(s). Toque para adicionar mais.</span>
+            ) : (
+              <span>Toque ou arraste aqui as imagens que vão receber a logo</span>
+            )}
             <input
               type="file"
-              accept="image/*"
               multiple
-              hidden
+              accept="image/*"
               onChange={(e) => {
                 addPhotos(e.target.files);
                 e.target.value = "";
               }}
+              style={{
+                position: "absolute",
+                inset: 0,
+                opacity: 0,
+                width: "100%",
+                height: "100%",
+                cursor: "pointer",
+                zIndex: 10,
+              }}
             />
-          </label>
+          </div>
+        </label>
 
-          {error && <p className="lt-error" role="alert">{error}</p>}
-          {!logo && items.length > 0 && (
-            <p className="lt-error" role="alert">Envie a logo para aplicar nas imagens.</p>
-          )}
+        {error && (
+          <p className="lt-error" role="alert">
+            {error}
+          </p>
+        )}
 
-          {items.length > 0 && (
-            <>
-              <div className="lt-bar">
-                <span>{items.length} {items.length === 1 ? "imagem" : "imagens"}</span>
-                <button type="button" className="lt-btn lt-btn-gold" onClick={downloadAll} disabled={!logo || busy}>
-                  {busy ? "Baixando…" : "Baixar todas"}
-                </button>
-              </div>
-              <div className="lt-grid">
-                {items.map((item) => (
-                  <Result key={item.id} item={item} logo={logo} opts={opts} format={format} onRemove={removeItem} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <button type="button" className="btn" onClick={downloadAll} disabled={!logo || !items.length || busy}>
+          {busy ? "Baixando..." : "⬇️ Baixar todas com a logo"}
+        </button>
       </div>
-    </section>
+
+      <div className="lt-results">
+        {items.length === 0 ? (
+          <div className="lt-empty">Anexe as imagens para ver a logo aplicada no canto direito</div>
+        ) : (
+          items.map((item) => (
+            <Result key={item.id} item={item} logo={logo} opts={opts} format={format} onRemove={removeItem} />
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 
 /* ------------------------------ estilo ------------------------------ */
 
 const css = `
-.lt-root{--lt-navy:var(--navy,#0e2240);--lt-gold:var(--gold,#c9a24b);--lt-ink:#1b2433;--lt-line:#d9dde5;--lt-soft:#f5f6f9;color:var(--lt-ink);max-width:1200px;margin:0 auto;padding:24px 16px 56px}
-.lt-head h2{margin:0 0 4px;font-size:1.5rem;color:var(--lt-navy)}
-.lt-head p{margin:0 0 24px;color:#5a6577}
-.lt-layout{display:grid;grid-template-columns:280px 1fr;gap:28px;align-items:start}
-.lt-panel{display:flex;flex-direction:column;gap:18px;padding:20px;border:1px solid var(--lt-line);border-radius:10px;background:#fff;position:sticky;top:16px}
-.lt-group{display:flex;flex-direction:column;gap:6px}
-.lt-label{font-size:.85rem;font-weight:600;color:var(--lt-navy);display:flex;justify-content:space-between}
-.lt-label b{font-weight:600;color:#5a6577}
-.lt-group small{color:#6b7587;font-size:.78rem;line-height:1.35}
-.lt-root select{padding:8px 10px;border:1px solid var(--lt-line);border-radius:6px;background:#fff;font:inherit}
-.lt-root input[type=range]{accent-color:var(--lt-gold);width:100%}
-.lt-logo-box{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px dashed var(--lt-line);border-radius:8px;background:repeating-conic-gradient(#eef0f4 0% 25%,#fff 0% 50%) 50%/16px 16px}
-.lt-logo-box img{max-width:100%;max-height:72px;object-fit:contain;align-self:center}
-.lt-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border:1px solid var(--lt-navy);border-radius:6px;background:#fff;color:var(--lt-navy);font:inherit;font-size:.88rem;cursor:pointer}
-.lt-btn:hover:not(:disabled){background:var(--lt-soft)}
-.lt-btn:focus-visible,.lt-root select:focus-visible,.lt-root input[type=range]:focus-visible{outline:2px solid var(--lt-gold);outline-offset:2px}
-.lt-btn:disabled{opacity:.5;cursor:not-allowed}
-.lt-btn-gold{background:var(--lt-navy);border-color:var(--lt-navy);color:#fff}
-.lt-btn-gold:hover:not(:disabled){background:#173363}
-.lt-block{width:100%;text-align:center}
-.lt-actions{display:flex;gap:8px}
-.lt-drop{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;text-align:center;padding:36px 20px;border:2px dashed var(--lt-line);border-radius:12px;background:var(--lt-soft);cursor:pointer;color:var(--lt-navy)}
-.lt-drop span{color:#5a6577;font-size:.88rem}
-.lt-drop:hover,.lt-drop.is-over{border-color:var(--lt-gold);background:#fbf7ec}
-.lt-error{margin:12px 0 0;color:#a32727;font-size:.9rem}
-.lt-bar{display:flex;justify-content:space-between;align-items:center;margin:22px 0 12px;color:#5a6577}
-.lt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
-.lt-card{margin:0;border:1px solid var(--lt-line);border-radius:10px;overflow:hidden;background:#fff}
-.lt-canvas{background:#e9ecf1}
-.lt-cap{display:flex;flex-direction:column;gap:8px;padding:10px 12px}
-.lt-name{font-size:.82rem;color:#5a6577;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:820px){.lt-layout{grid-template-columns:1fr}.lt-panel{position:static}}
+.lt-root input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--gold,#c8a86b);width:100%}
+.lt-root label > span:first-child{display:flex;justify-content:space-between}
+.lt-val{color:var(--gold-l,#e6cf9d);font-weight:600}
+.lt-muted{color:var(--gold-d,#9c7f46);font-size:11px;line-height:1.4}
+.lt-logo-box{display:grid;gap:10px;justify-items:center;padding:12px;border:1px dashed var(--gold-d,#9c7f46);border-radius:10px;background:repeating-conic-gradient(#0b1b36 0% 25%,#071328 0% 50%) 50%/16px 16px}
+.lt-logo-box img{max-width:100%;max-height:72px;object-fit:contain}
+.lt-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.lt-file{cursor:pointer}
+.lt-error{margin:0;color:#ff9b9b;font-size:12px}
+.lt-results{display:grid;gap:14px;align-content:start;width:100%}
+.lt-card{margin:0;border:1px solid var(--gold-d,#9c7f46);border-radius:12px;overflow:hidden;background:#071328}
+.lt-canvas{background:#040a17}
+.lt-cap{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px}
+.lt-name{font-size:12px;color:var(--gold-l,#e6cf9d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.lt-empty{display:grid;place-items:center;min-height:320px;padding:24px;border:1px solid var(--gold-d,#9c7f46);border-radius:12px;background:#071328;color:var(--gold-d,#9c7f46);font-size:12px;text-align:center}
 `;
