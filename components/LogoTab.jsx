@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /* ------------------------------------------------------------------ */
 /*  Aba "Logo nas Imagens"                                             */
@@ -43,6 +43,132 @@ function readAsDataURL(file) {
     reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
     reader.readAsDataURL(file);
   });
+}
+
+// Remove um fundo liso (branco, preto ou qualquer cor única) ligado às bordas
+// da imagem. Só age se os 4 cantos tiverem a mesma cor. Retorna true se removeu.
+function removeSolidBackground(imageData, tol = 48) {
+  const { width: w, height: h, data: d } = imageData;
+  const px = (x, y) => (y * w + x) * 4;
+  const corners = [px(0, 0), px(w - 1, 0), px(0, h - 1), px(w - 1, h - 1)];
+  const bg = [d[corners[0]], d[corners[0] + 1], d[corners[0] + 2]];
+  const dist = (i) => Math.max(Math.abs(d[i] - bg[0]), Math.abs(d[i + 1] - bg[1]), Math.abs(d[i + 2] - bg[2]));
+  if (corners.some((i) => dist(i) > 40)) return false;
+
+  const removed = new Uint8Array(w * h);
+  const stack = [];
+  const push = (x, y) => {
+    const k = y * w + x;
+    if (removed[k]) return;
+    if (dist(k * 4) > tol) return;
+    removed[k] = 1;
+    stack.push(k);
+  };
+  for (let x = 0; x < w; x++) {
+    push(x, 0);
+    push(x, h - 1);
+  }
+  for (let y = 0; y < h; y++) {
+    push(0, y);
+    push(w - 1, y);
+  }
+  while (stack.length) {
+    const k = stack.pop();
+    const x = k % w;
+    const y = (k - x) / w;
+    if (x > 0) push(x - 1, y);
+    if (x < w - 1) push(x + 1, y);
+    if (y > 0) push(x, y - 1);
+    if (y < h - 1) push(x, y + 1);
+  }
+
+  // suaviza a borda para não ficar um contorno claro/escuro em volta da logo
+  const feather = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const k = y * w + x;
+      if (removed[k]) continue;
+      const near =
+        (x > 0 && removed[k - 1]) ||
+        (x < w - 1 && removed[k + 1]) ||
+        (y > 0 && removed[k - w]) ||
+        (y < h - 1 && removed[k + w]);
+      if (near) feather.push(k);
+    }
+  }
+  for (const k of feather) {
+    const t = Math.min(1, Math.max(0, (dist(k * 4) - tol) / tol));
+    d[k * 4 + 3] = Math.round(255 * t);
+  }
+  for (let k = 0; k < removed.length; k++) if (removed[k]) d[k * 4 + 3] = 0;
+  return true;
+}
+
+// Prepara a logo para uso:
+// - SVG é rasterizado em boa resolução (alguns navegadores não dão o tamanho do SVG)
+// - se a logo tem fundo liso e removeBg está ligado, o fundo é apagado
+// - bordas transparentes são recortadas, para o tamanho e a margem ficarem exatos
+async function prepareLogo(src, removeBg) {
+  const raw = await loadImage(src);
+  const isSvg = src.startsWith("data:image/svg") || /\.svg(\?|$)/i.test(src);
+  let w = raw.naturalWidth;
+  let h = raw.naturalHeight;
+  if (!w || !h) {
+    w = 1000;
+    h = 1000;
+  }
+  const target = isSvg ? 1200 : Math.min(1600, Math.max(w, h));
+  const k = target / Math.max(w, h);
+  const cw = Math.max(1, Math.round(w * k));
+  const ch = Math.max(1, Math.round(h * k));
+
+  const c = document.createElement("canvas");
+  c.width = cw;
+  c.height = ch;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(raw, 0, 0, cw, ch);
+
+  const imageData = ctx.getImageData(0, 0, cw, ch);
+  const d = imageData.data;
+  let hasAlpha = false;
+  for (let i = 3; i < d.length; i += 4) {
+    if (d[i] < 250) {
+      hasAlpha = true;
+      break;
+    }
+  }
+  let bgRemoved = false;
+  if (!hasAlpha && removeBg) {
+    bgRemoved = removeSolidBackground(imageData);
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // recorte das bordas totalmente transparentes
+  let minX = cw;
+  let minY = ch;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < ch; y++) {
+    for (let x = 0; x < cw; x++) {
+      if (d[(y * cw + x) * 4 + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0) throw new Error("A logo parece estar totalmente transparente.");
+
+  const bw = maxX - minX + 1;
+  const bh = maxY - minY + 1;
+  const out = document.createElement("canvas");
+  out.width = bw;
+  out.height = bh;
+  out.getContext("2d").drawImage(c, minX, minY, bw, bh, 0, 0, bw, bh);
+
+  const img = await loadImage(out.toDataURL("image/png"));
+  return { img, lum: logoLuminance(img), transparent: hasAlpha, bgRemoved };
 }
 
 // Luminância média (0–255) da logo, ponderada pela opacidade de cada pixel.
@@ -101,7 +227,12 @@ function roundedRect(ctx, x, y, w, h, r) {
 // Desenha a foto e aplica a logo. Todas as medidas são proporcionais à
 // largura da imagem, então a prévia e o arquivo final ficam idênticos.
 function composite(photo, logo, o, maxDim) {
-  const scale = Math.min(1, maxDim / Math.max(photo.naturalWidth, photo.naturalHeight));
+  // Limita lado maior e total de pixels (iPhone/Safari falha acima de ~16 milhões)
+  const scale = Math.min(
+    1,
+    maxDim / Math.max(photo.naturalWidth, photo.naturalHeight),
+    Math.sqrt(15000000 / (photo.naturalWidth * photo.naturalHeight))
+  );
   const w = Math.round(photo.naturalWidth * scale);
   const h = Math.round(photo.naturalHeight * scale);
 
@@ -193,7 +324,10 @@ function Result({ item, logo, opts, format, onRemove }) {
   useEffect(() => {
     if (!host.current) return;
     const canvas = composite(item.img, logo, opts, PREVIEW_DIM);
-    canvas.style.cssText = "width:100%;height:auto;display:block";
+    // O canvas preenche uma caixa com a proporção exata da foto e usa
+    // "contain": a imagem aparece inteira, nunca cortada.
+    canvas.style.cssText =
+      "position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:contain";
     host.current.replaceChildren(canvas);
   }, [item, logo, opts]);
 
@@ -204,7 +338,11 @@ function Result({ item, logo, opts, format, onRemove }) {
 
   return (
     <figure className="lt-card">
-      <div className="lt-canvas" ref={host} />
+      <div
+        className="lt-canvas"
+        ref={host}
+        style={{ aspectRatio: `${item.img.naturalWidth} / ${item.img.naturalHeight}` }}
+      />
       <figcaption className="lt-cap">
         <span className="lt-name" title={item.name}>
           {item.name}
@@ -225,7 +363,9 @@ function Result({ item, logo, opts, format, onRemove }) {
 /* ------------------------------ aba -------------------------------- */
 
 export default function LogoTab() {
-  const [logo, setLogo] = useState(null); // { img, lum }
+  const [logoSrc, setLogoSrc] = useState(null);
+  const [removeBg, setRemoveBg] = useState(true);
+  const [logo, setLogo] = useState(null); // { img, lum, transparent, bgRemoved }
   const [items, setItems] = useState([]); // { id, name, url, img }
   const [opts, setOpts] = useState({
     position: "bottom-right",
@@ -239,29 +379,36 @@ export default function LogoTab() {
   const [error, setError] = useState("");
   const urls = useRef(new Set());
 
-  const applyLogo = useCallback(async (src) => {
-    const img = await loadImage(src);
-    setLogo({ img, lum: logoLuminance(img) });
+  // Origem da logo: a enviada antes (guardada no navegador) ou /logo-gold.png
+  useEffect(() => {
+    let saved = null;
+    try {
+      saved = window.localStorage.getItem(STORAGE_KEY);
+    } catch {}
+    setLogoSrc(saved || DEFAULT_LOGO);
   }, []);
 
-  // Carrega a logo enviada antes; se não houver, usa /logo-gold.png
+  // Prepara a logo sempre que a origem ou a opção de remover fundo mudar
   useEffect(() => {
+    if (!logoSrc) return;
     let alive = true;
-    (async () => {
-      let saved = null;
-      try {
-        saved = window.localStorage.getItem(STORAGE_KEY);
-      } catch {}
-      try {
-        await applyLogo(saved || DEFAULT_LOGO);
-      } catch {
-        if (alive) setLogo(null);
-      }
-    })();
+    prepareLogo(logoSrc, removeBg)
+      .then((l) => {
+        if (alive) {
+          setLogo(l);
+          setError("");
+        }
+      })
+      .catch((e) => {
+        if (alive) {
+          setLogo(null);
+          setError(e.message || "Não foi possível abrir a logo.");
+        }
+      });
     return () => {
       alive = false;
     };
-  }, [applyLogo]);
+  }, [logoSrc, removeBg]);
 
   useEffect(() => {
     const set = urls.current;
@@ -273,7 +420,7 @@ export default function LogoTab() {
     setError("");
     try {
       const src = await readAsDataURL(file);
-      await applyLogo(src);
+      setLogoSrc(src);
       try {
         window.localStorage.setItem(STORAGE_KEY, src);
       } catch {}
@@ -282,15 +429,11 @@ export default function LogoTab() {
     }
   }
 
-  async function resetLogo() {
+  function resetLogo() {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {}
-    try {
-      await applyLogo(DEFAULT_LOGO);
-    } catch {
-      setLogo(null);
-    }
+    setLogoSrc(DEFAULT_LOGO);
   }
 
   async function addPhotos(fileList) {
@@ -375,6 +518,30 @@ export default function LogoTab() {
               Usar logo padrão
             </button>
           </div>
+        </div>
+
+        <div style={{ display: "grid", gap: "4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--gold-l)" }}>
+            <input
+              type="checkbox"
+              id="lt-removebg"
+              checked={removeBg}
+              onChange={(e) => setRemoveBg(e.target.checked)}
+              style={{ width: "15px", height: "15px", accentColor: "var(--gold)" }}
+            />
+            <label htmlFor="lt-removebg" style={{ cursor: "pointer", margin: 0 }}>
+              Remover fundo liso da logo (se ela tiver fundo)
+            </label>
+          </div>
+          {logo && (
+            <small className="lt-muted">
+              {logo.transparent
+                ? "Logo com fundo transparente: usada como está, com as bordas vazias recortadas."
+                : logo.bgRemoved
+                  ? "A logo tinha fundo liso e ele foi removido automaticamente."
+                  : "A logo não tem transparência e o fundo não é liso. Use um PNG sem fundo para melhor resultado."}
+            </small>
+          )}
         </div>
 
         <label>
@@ -511,7 +678,8 @@ const css = `
 .lt-error{margin:0;color:#ff9b9b;font-size:12px}
 .lt-results{display:grid;gap:14px;align-content:start;width:100%}
 .lt-card{margin:0;border:1px solid var(--gold-d,#9c7f46);border-radius:12px;overflow:hidden;background:#071328}
-.lt-canvas{background:#040a17}
+.lt-canvas{position:relative;width:100%;height:auto;max-height:none;overflow:visible;background:#040a17}
+.lt-results{min-width:0;overflow:visible}
 .lt-cap{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px}
 .lt-name{font-size:12px;color:var(--gold-l,#e6cf9d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .lt-empty{display:grid;place-items:center;min-height:320px;padding:24px;border:1px solid var(--gold-d,#9c7f46);border-radius:12px;background:#071328;color:var(--gold-d,#9c7f46);font-size:12px;text-align:center}
