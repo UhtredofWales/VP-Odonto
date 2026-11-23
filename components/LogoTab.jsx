@@ -370,7 +370,7 @@ export default function LogoTab() {
   const [opts, setOpts] = useState({
     position: "bottom-right",
     size: 18,
-    margin: 4,
+    margin: 2,
     opacity: 100,
     protection: "auto",
   });
@@ -566,7 +566,7 @@ export default function LogoTab() {
           <span>
             Distância da borda <span className="lt-val">{opts.margin}%</span>
           </span>
-          <input type="range" min="1" max="10" value={opts.margin} onChange={set("margin")} />
+          <input type="range" min="0" max="10" step="0.5" value={opts.margin} onChange={set("margin")} />
         </label>
 
         <label>
