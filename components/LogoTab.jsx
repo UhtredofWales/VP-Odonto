@@ -9,7 +9,10 @@ import { useEffect, useRef, useState } from "react";
 /* ------------------------------------------------------------------ */
 
 const DEFAULT_LOGO = "/logo-gold.png"; // arquivo que já existe em /public
-const STORAGE_KEY = "logo-tab:logo";
+const STORAGE_KEY = "logo-tab:logo"; // última logo enviada (ainda não cadastrada)
+const LIB_KEY = "logo-tab:library"; // logos cadastradas
+const ACTIVE_KEY = "logo-tab:active"; // id da logo cadastrada em uso
+const MAX_LOGOS = 12;
 const PREVIEW_DIM = 900; // lado maior da pré-visualização
 const EXPORT_DIM = 6000; // teto do arquivo final (mantém a resolução original abaixo disso)
 
@@ -169,6 +172,44 @@ async function prepareLogo(src, removeBg) {
 
   const img = await loadImage(out.toDataURL("image/png"));
   return { img, lum: logoLuminance(img), transparent: hasAlpha, bgRemoved };
+}
+
+// Biblioteca de logos cadastradas (fica guardada neste navegador/aparelho)
+function readLibrary() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(LIB_KEY) || "[]");
+    return Array.isArray(v) ? v.filter((i) => i && i.id && i.src) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLibrary(list) {
+  try {
+    window.localStorage.setItem(LIB_KEY, JSON.stringify(list));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function rememberActive(id) {
+  try {
+    if (id) window.localStorage.setItem(ACTIVE_KEY, id);
+    else window.localStorage.removeItem(ACTIVE_KEY);
+  } catch {}
+}
+
+// Reduz a logo (mantendo a transparência) para caber melhor no armazenamento
+function shrinkLogo(img, maxDim = 1000) {
+  const k = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(img.naturalWidth * k));
+  c.height = Math.max(1, Math.round(img.naturalHeight * k));
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL("image/png");
 }
 
 // Luminância média (0–255) da logo, ponderada pela opacidade de cada pixel.
@@ -365,6 +406,10 @@ function Result({ item, logo, opts, format, onRemove }) {
 export default function LogoTab() {
   const [logoSrc, setLogoSrc] = useState(null);
   const [removeBg, setRemoveBg] = useState(true);
+  const [library, setLibrary] = useState([]); // { id, name, src }
+  const [libName, setLibName] = useState("");
+  const [libMsg, setLibMsg] = useState("");
+  const [activeLibId, setActiveLibId] = useState(null);
   const [logo, setLogo] = useState(null); // { img, lum, transparent, bgRemoved }
   const [items, setItems] = useState([]); // { id, name, url, img }
   const [opts, setOpts] = useState({
@@ -381,11 +426,21 @@ export default function LogoTab() {
 
   // Origem da logo: a enviada antes (guardada no navegador) ou /logo-gold.png
   useEffect(() => {
+    const lib = readLibrary();
+    setLibrary(lib);
     let saved = null;
+    let activeId = null;
     try {
       saved = window.localStorage.getItem(STORAGE_KEY);
+      activeId = window.localStorage.getItem(ACTIVE_KEY);
     } catch {}
-    setLogoSrc(saved || DEFAULT_LOGO);
+    const found = lib.find((l) => l.id === activeId);
+    if (found) {
+      setActiveLibId(found.id);
+      setLogoSrc(found.src);
+    } else {
+      setLogoSrc(saved || DEFAULT_LOGO);
+    }
   }, []);
 
   // Prepara a logo sempre que a origem ou a opção de remover fundo mudar
@@ -421,6 +476,9 @@ export default function LogoTab() {
     try {
       const src = await readAsDataURL(file);
       setLogoSrc(src);
+      setActiveLibId(null);
+      rememberActive(null);
+      setLibMsg("");
       try {
         window.localStorage.setItem(STORAGE_KEY, src);
       } catch {}
@@ -433,7 +491,54 @@ export default function LogoTab() {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {}
+    setActiveLibId(null);
+    rememberActive(null);
+    setLibMsg("");
     setLogoSrc(DEFAULT_LOGO);
+  }
+
+  function saveToLibrary() {
+    if (!logo) return;
+    setError("");
+    if (library.length >= MAX_LOGOS) {
+      setError(`Você já tem ${MAX_LOGOS} logos cadastradas. Remova alguma para cadastrar outra.`);
+      return;
+    }
+    const name = (libName.trim() || `Logo ${library.length + 1}`).slice(0, 40);
+    const entry = {
+      id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      src: shrinkLogo(logo.img),
+    };
+    const next = [...library, entry];
+    if (!writeLibrary(next)) {
+      setError("Não há espaço no navegador para guardar mais logos. Remova alguma da lista e tente de novo.");
+      return;
+    }
+    setLibrary(next);
+    setActiveLibId(entry.id);
+    rememberActive(entry.id);
+    setLibName("");
+    setLibMsg(`Logo "${name}" cadastrada.`);
+  }
+
+  function selectFromLibrary(entry) {
+    setError("");
+    setLibMsg("");
+    setActiveLibId(entry.id);
+    rememberActive(entry.id);
+    setLogoSrc(entry.src);
+  }
+
+  function deleteFromLibrary(id) {
+    const next = library.filter((l) => l.id !== id);
+    writeLibrary(next);
+    setLibrary(next);
+    setLibMsg("");
+    if (activeLibId === id) {
+      setActiveLibId(null);
+      rememberActive(null);
+    }
   }
 
   async function addPhotos(fileList) {
@@ -503,7 +608,7 @@ export default function LogoTab() {
           )}
           <div className="lt-actions">
             <label className="btn ghost lt-file">
-              Trocar logo
+              Enviar nova logo
               <input
                 type="file"
                 accept="image/png,image/svg+xml,image/webp,image/jpeg"
@@ -518,6 +623,47 @@ export default function LogoTab() {
               Usar logo padrão
             </button>
           </div>
+        </div>
+
+        <div style={{ display: "grid", gap: "8px" }}>
+          <span style={{ fontSize: "13px", color: "var(--gold-l)" }}>Cadastrar a logo atual</span>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              value={libName}
+              maxLength={40}
+              placeholder="Nome (ex.: Logo dourada)"
+              onChange={(e) => setLibName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveToLibrary();
+              }}
+            />
+            <button type="button" className="btn" style={{ whiteSpace: "nowrap" }} onClick={saveToLibrary} disabled={!logo}>
+              Cadastrar
+            </button>
+          </div>
+          {libMsg && <small className="lt-muted">{libMsg}</small>}
+
+          {library.length > 0 && (
+            <>
+              <span style={{ fontSize: "13px", color: "var(--gold-l)", marginTop: "4px" }}>Logos cadastradas</span>
+              <div className="lt-lib">
+                {library.map((l) => (
+                  <div key={l.id} className={`lt-tile${activeLibId === l.id ? " is-active" : ""}`}>
+                    <button type="button" className="lt-tile-pick" onClick={() => selectFromLibrary(l)} title={`Usar ${l.name}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={l.src} alt={l.name} />
+                      <span>{l.name}</span>
+                    </button>
+                    <button type="button" className="lt-tile-x" onClick={() => deleteFromLibrary(l.id)} aria-label={`Remover ${l.name}`}>
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <small className="lt-muted">As logos cadastradas ficam guardadas neste navegador. Em outro aparelho, cadastre de novo.</small>
+            </>
+          )}
         </div>
 
         <div style={{ display: "grid", gap: "4px" }}>
@@ -675,6 +821,14 @@ const css = `
 .lt-logo-box img{max-width:100%;max-height:72px;object-fit:contain}
 .lt-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .lt-file{cursor:pointer}
+.lt-lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.lt-tile{position:relative;border:1px solid var(--gold-d,#9c7f46);border-radius:10px;overflow:hidden;background:repeating-conic-gradient(#0b1b36 0% 25%,#071328 0% 50%) 50%/12px 12px}
+.lt-tile.is-active{border-color:var(--gold,#c8a86b);box-shadow:0 0 0 1px var(--gold,#c8a86b)}
+.lt-tile-pick{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:4px;justify-items:center;width:100%;padding:8px 6px 6px}
+.lt-tile-pick:focus-visible{outline:2px solid var(--gold,#c8a86b);outline-offset:-2px}
+.lt-tile-pick img{max-width:100%;height:36px;object-fit:contain}
+.lt-tile-pick span{font-size:10px;color:var(--gold-l,#e6cf9d);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lt-tile-x{position:absolute;top:2px;right:2px;width:18px;height:18px;padding:0;border:none;border-radius:50%;background:rgba(0,0,0,.8);color:#fff;font-size:12px;line-height:1;cursor:pointer}
 .lt-error{margin:0;color:#ff9b9b;font-size:12px}
 .lt-results{display:grid;gap:14px;align-content:start;width:100%}
 .lt-card{margin:0;border:1px solid var(--gold-d,#9c7f46);border-radius:12px;overflow:hidden;background:#071328}
